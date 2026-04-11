@@ -4,6 +4,7 @@
 # dependencies = ["requests", "pyyaml"]
 # ///
 
+import re
 import sys
 import netrc as netrc_mod
 from pathlib import Path
@@ -47,6 +48,18 @@ def load_token(server_url, netrc_path=DEFAULT_NETRC_PATH):
         )
         raise SystemExit(f"No .netrc entry for {hostname}")
     return auth[2]
+
+
+def normalize_key(key, default_project):
+    if key.isdigit():
+        return f"{default_project}-{key}"
+    return key.upper()
+
+
+def normalize_jql(jql, default_project):
+    if not re.search(r"\bproject\s*=", jql, re.IGNORECASE):
+        return f"project = {default_project} AND {jql}"
+    return jql
 
 
 def main():
