@@ -63,6 +63,7 @@ project: MAV
 ### Transition an issue
 
 ```
+./nhse-jira transition 5902              # list available transitions
 ./nhse-jira transition 5902 "In Progress"
 ./nhse-jira transition MAV-5902 Done
 ```
