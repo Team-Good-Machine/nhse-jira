@@ -234,6 +234,23 @@ def cmd_release(session, base_url, project, version_name):
     print(format_release(data))
 
 
+def cmd_releases(session, base_url, project, unreleased=False):
+    versions = api_get(session, base_url, f"project/{project}/versions")
+    if unreleased:
+        versions = [v for v in versions if not v.get("released", False)]
+    if not versions:
+        print("No versions found")
+        return
+    name_width = max(len(v["name"]) for v in versions)
+    lines = []
+    for v in versions:
+        name = v["name"]
+        status = f"{GREEN}Released{RESET}" if v.get("released") else f"{YELLOW}Unreleased{RESET}"
+        date = v.get("releaseDate", "")
+        lines.append(f"{CYAN}{name:<{name_width}}{RESET}  {status}  {date}")
+    print("\n".join(lines))
+
+
 import argparse
 
 
@@ -256,6 +273,9 @@ def build_parser():
 
     release_parser = subparsers.add_parser("release", help="List issues in a release")
     release_parser.add_argument("version", help="Version name")
+
+    releases_parser = subparsers.add_parser("releases", help="List project versions")
+    releases_parser.add_argument("--unreleased", action="store_true", help="Only unreleased versions")
 
     return parser
 
@@ -280,6 +300,8 @@ def main():
         cmd_transition(session, base_url, issue_key, args.status)
     elif args.command == "release":
         cmd_release(session, base_url, project, args.version)
+    elif args.command == "releases":
+        cmd_releases(session, base_url, project, unreleased=args.unreleased)
 
 
 if __name__ == "__main__":

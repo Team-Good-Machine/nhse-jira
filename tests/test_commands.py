@@ -136,3 +136,59 @@ class TestCmdRelease:
         assert "Add feature X" in output
         assert "MAV-11" in output
         assert "Fix bug Y" in output
+
+
+SAMPLE_VERSIONS = [
+    {
+        "name": "7.7.0",
+        "released": True,
+        "releaseDate": "2026-03-01",
+    },
+    {
+        "name": "7.8.0",
+        "released": False,
+    },
+    {
+        "name": "7.9.0",
+        "released": False,
+    },
+]
+
+
+class TestCmdReleases:
+    def test_lists_all_versions(self, capsys):
+        session = _mock_session(SAMPLE_VERSIONS)
+
+        nhse_jira.cmd_releases(session, "https://jira.example.com", "MAV")
+
+        output = capsys.readouterr().out
+        assert "7.7.0" in output
+        assert "7.8.0" in output
+        assert "7.9.0" in output
+
+    def test_shows_release_status(self, capsys):
+        session = _mock_session(SAMPLE_VERSIONS)
+
+        nhse_jira.cmd_releases(session, "https://jira.example.com", "MAV")
+
+        output = capsys.readouterr().out
+        assert "Released" in output
+        assert "Unreleased" in output
+
+    def test_shows_release_date(self, capsys):
+        session = _mock_session(SAMPLE_VERSIONS)
+
+        nhse_jira.cmd_releases(session, "https://jira.example.com", "MAV")
+
+        output = capsys.readouterr().out
+        assert "2026-03-01" in output
+
+    def test_unreleased_filter(self, capsys):
+        session = _mock_session(SAMPLE_VERSIONS)
+
+        nhse_jira.cmd_releases(session, "https://jira.example.com", "MAV", unreleased=True)
+
+        output = capsys.readouterr().out
+        assert "7.7.0" not in output
+        assert "7.8.0" in output
+        assert "7.9.0" in output
