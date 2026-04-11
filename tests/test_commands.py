@@ -33,3 +33,46 @@ class TestCmdView:
         assert "MAV-5902" in output
         assert "Fix login bug" in output
         assert "Alice" in output
+
+
+SAMPLE_SEARCH = {
+    "issues": [
+        {"key": "MAV-1", "fields": {"summary": "First", "status": {"name": "Done"}}},
+        {"key": "MAV-2", "fields": {"summary": "Second", "status": {"name": "Open"}}},
+    ]
+}
+
+
+class TestBuildListJql:
+    def test_mine_flag(self):
+        result = nhse_jira.build_list_jql(mine=True)
+        assert result == "assignee = currentUser()"
+
+    def test_status_flag(self):
+        result = nhse_jira.build_list_jql(status="In Progress")
+        assert result == "status = 'In Progress'"
+
+    def test_mine_and_status(self):
+        result = nhse_jira.build_list_jql(mine=True, status="Done")
+        assert "assignee = currentUser()" in result
+        assert "status = 'Done'" in result
+        assert " AND " in result
+
+    def test_raw_jql(self):
+        result = nhse_jira.build_list_jql(jql="type = Bug")
+        assert result == "type = Bug"
+
+    def test_empty_defaults_to_order_by(self):
+        result = nhse_jira.build_list_jql()
+        assert "ORDER BY" in result
+
+
+class TestCmdList:
+    def test_prints_table(self, capsys):
+        session = _mock_session(SAMPLE_SEARCH)
+
+        nhse_jira.cmd_list(session, "https://jira.example.com", "MAV", jql="status = Open")
+
+        output = capsys.readouterr().out
+        assert "MAV-1" in output
+        assert "First" in output

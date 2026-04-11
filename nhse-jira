@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["requests", "pyyaml"]
@@ -143,6 +143,7 @@ class JiraError(Exception):
 
 def create_session(token):
     session = requests.Session()
+    session.trust_env = False  # prevent requests from applying .netrc Basic auth
     session.headers["Authorization"] = f"Bearer {token}"
     session.headers["Content-Type"] = "application/json"
     return session
@@ -178,8 +179,63 @@ def cmd_view(session, base_url, issue_key):
     print(format_issue(data))
 
 
+def build_list_jql(jql="", mine=False, status=None):
+    parts = []
+    if mine:
+        parts.append("assignee = currentUser()")
+    if status:
+        parts.append(f"status = '{status}'")
+    if jql:
+        parts.append(jql)
+    if not parts:
+        return "ORDER BY updated DESC"
+    return " AND ".join(parts)
+
+
+def cmd_list(session, base_url, project, jql="", mine=False, status=None, limit=50):
+    query = build_list_jql(jql=jql, mine=mine, status=status)
+    query = normalize_jql(query, project)
+    data = api_get(
+        session, base_url, "search",
+        params={"jql": query, "maxResults": limit, "fields": "summary,status"},
+    )
+    print(format_issue_table(data))
+
+
+import argparse
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(prog="nhse-jira", description="CLI for NHSE Jira")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    view_parser = subparsers.add_parser("view", help="View issue details")
+    view_parser.add_argument("issue", help="Issue key or number")
+
+    list_parser = subparsers.add_parser("list", help="Search issues with JQL")
+    list_parser.add_argument("jql", nargs="?", default="", help="JQL query")
+    list_parser.add_argument("--mine", action="store_true", help="Only my issues")
+    list_parser.add_argument("--status", help="Filter by status")
+    list_parser.add_argument("--limit", type=int, default=50, help="Max results (default: 50)")
+
+    return parser
+
+
 def main():
-    pass
+    parser = build_parser()
+    args = parser.parse_args()
+
+    config = load_config()
+    token = load_token(config["server"])
+    session = create_session(token)
+    base_url = config["server"]
+    project = config["project"]
+
+    if args.command == "view":
+        issue_key = normalize_key(args.issue, project)
+        cmd_view(session, base_url, issue_key)
+    elif args.command == "list":
+        cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit)
 
 
 if __name__ == "__main__":
