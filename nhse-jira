@@ -10,6 +10,7 @@ import netrc as netrc_mod
 from pathlib import Path
 from urllib.parse import urlparse
 
+import requests
 import yaml
 
 
@@ -134,6 +135,42 @@ def format_release(data):
         summary = issue["fields"]["summary"]
         lines.append(f"{CYAN}[{key}]{RESET} {summary}")
     return "\n".join(lines)
+
+
+class JiraError(Exception):
+    pass
+
+
+def create_session(token):
+    session = requests.Session()
+    session.headers["Authorization"] = f"Bearer {token}"
+    session.headers["Content-Type"] = "application/json"
+    return session
+
+
+def _handle_error(resp):
+    try:
+        body = resp.json()
+        messages = body.get("errorMessages", [])
+        msg = "; ".join(messages) if messages else resp.text
+    except Exception:
+        msg = resp.text
+    raise JiraError(f"HTTP {resp.status_code}: {msg}")
+
+
+def api_get(session, base_url, path, params=None):
+    resp = session.get(f"{base_url}/rest/api/2/{path}", params=params)
+    if not resp.ok:
+        _handle_error(resp)
+    return resp.json()
+
+
+def api_post(session, base_url, path, json=None):
+    resp = session.post(f"{base_url}/rest/api/2/{path}", json=json)
+    if not resp.ok:
+        _handle_error(resp)
+    if resp.content:
+        return resp.json()
 
 
 def main():
