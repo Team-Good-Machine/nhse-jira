@@ -202,6 +202,38 @@ def cmd_list(session, base_url, project, jql="", mine=False, status=None, limit=
     print(format_issue_table(data))
 
 
+def cmd_transition(session, base_url, issue_key, target_status):
+    data = api_get(session, base_url, f"issue/{issue_key}/transitions")
+    transitions = data["transitions"]
+
+    match = None
+    for t in transitions:
+        if t["to"]["name"].lower() == target_status.lower():
+            match = t
+            break
+
+    if match is None:
+        available = [t["to"]["name"] for t in transitions]
+        print(
+            f"Error: Cannot transition {issue_key} to '{target_status}'\n"
+            f"Available transitions: {', '.join(available)}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    api_post(session, base_url, f"issue/{issue_key}/transitions", json={"transition": {"id": match["id"]}})
+    print(f"Transitioned {issue_key} to {target_status}")
+
+
+def cmd_release(session, base_url, project, version_name):
+    jql = f'project = {project} AND fixVersion = "{version_name}" ORDER BY key ASC'
+    data = api_get(
+        session, base_url, "search",
+        params={"jql": jql, "maxResults": 200, "fields": "summary"},
+    )
+    print(format_release(data))
+
+
 import argparse
 
 
@@ -217,6 +249,13 @@ def build_parser():
     list_parser.add_argument("--mine", action="store_true", help="Only my issues")
     list_parser.add_argument("--status", help="Filter by status")
     list_parser.add_argument("--limit", type=int, default=50, help="Max results (default: 50)")
+
+    trans_parser = subparsers.add_parser("transition", help="Transition an issue")
+    trans_parser.add_argument("issue", help="Issue key or number")
+    trans_parser.add_argument("status", help="Target status name")
+
+    release_parser = subparsers.add_parser("release", help="List issues in a release")
+    release_parser.add_argument("version", help="Version name")
 
     return parser
 
@@ -236,6 +275,11 @@ def main():
         cmd_view(session, base_url, issue_key)
     elif args.command == "list":
         cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit)
+    elif args.command == "transition":
+        issue_key = normalize_key(args.issue, project)
+        cmd_transition(session, base_url, issue_key, args.status)
+    elif args.command == "release":
+        cmd_release(session, base_url, project, args.version)
 
 
 if __name__ == "__main__":

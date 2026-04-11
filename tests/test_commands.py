@@ -76,3 +76,63 @@ class TestCmdList:
         output = capsys.readouterr().out
         assert "MAV-1" in output
         assert "First" in output
+
+
+SAMPLE_TRANSITIONS = {
+    "transitions": [
+        {"id": "11", "name": "Start Progress", "to": {"name": "In Progress"}},
+        {"id": "21", "name": "Done", "to": {"name": "Done"}},
+        {"id": "31", "name": "Reopen", "to": {"name": "Open"}},
+    ]
+}
+
+
+class TestCmdTransition:
+    def test_successful_transition(self, capsys):
+        session = MagicMock()
+        session.get.return_value.ok = True
+        session.get.return_value.json.return_value = SAMPLE_TRANSITIONS
+        session.post.return_value.ok = True
+        session.post.return_value.status_code = 204
+        session.post.return_value.content = b""
+
+        nhse_jira.cmd_transition(session, "https://jira.example.com", "MAV-5902", "In Progress")
+
+        session.post.assert_called_once()
+        output = capsys.readouterr().out
+        assert "MAV-5902" in output
+        assert "In Progress" in output
+
+    def test_invalid_transition_shows_available(self, capsys):
+        session = MagicMock()
+        session.get.return_value.ok = True
+        session.get.return_value.json.return_value = SAMPLE_TRANSITIONS
+
+        with pytest.raises(SystemExit):
+            nhse_jira.cmd_transition(session, "https://jira.example.com", "MAV-5902", "Nonexistent")
+
+        output = capsys.readouterr().err
+        assert "In Progress" in output
+        assert "Done" in output
+        assert "Open" in output
+
+
+SAMPLE_RELEASE_SEARCH = {
+    "issues": [
+        {"key": "MAV-10", "fields": {"summary": "Add feature X"}},
+        {"key": "MAV-11", "fields": {"summary": "Fix bug Y"}},
+    ]
+}
+
+
+class TestCmdRelease:
+    def test_prints_release_issues(self, capsys):
+        session = _mock_session(SAMPLE_RELEASE_SEARCH)
+
+        nhse_jira.cmd_release(session, "https://jira.example.com", "MAV", "7.8.0")
+
+        output = capsys.readouterr().out
+        assert "MAV-10" in output
+        assert "Add feature X" in output
+        assert "MAV-11" in output
+        assert "Fix bug Y" in output
