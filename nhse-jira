@@ -4,6 +4,7 @@
 # dependencies = ["requests", "pyyaml"]
 # ///
 
+import getpass
 import re
 import sys
 import netrc as netrc_mod
@@ -257,12 +258,61 @@ def cmd_releases(session, base_url, project, unreleased=False):
     print("\n".join(lines))
 
 
+DEFAULT_SERVER = "https://nhsd-jira.digital.nhs.uk"
+DEFAULT_PROJECT = "MAV"
+
+
+def cmd_init(config_dir=None, netrc_path=None):
+    if config_dir is None:
+        config_dir = Path.home() / ".config" / "nhse-jira"
+    config_dir = Path(config_dir)
+    if netrc_path is None:
+        netrc_path = Path.home() / ".netrc"
+    netrc_path = Path(netrc_path)
+
+    config_file = config_dir / "config.yml"
+
+    # If config already exists, ask before overwriting
+    if config_file.exists():
+        answer = input(f"Config already exists at {config_file}. Overwrite? [y/N] ")
+        if answer.lower() != "y":
+            return
+
+    server = input(f"Jira server URL [{DEFAULT_SERVER}]: ").strip() or DEFAULT_SERVER
+    hostname = urlparse(server).hostname
+
+    pat_url = f"{server}/secure/ViewProfile.jspa?selectedTab=com.atlassian.pats.pats-plugin:jira-user-personal-access-tokens"
+    print(f"\nCreate a Personal Access Token at:\n  {pat_url}\n")
+    token = getpass.getpass("Paste your token: ")
+
+    project = input(f"Default project [{DEFAULT_PROJECT}]: ").strip() or DEFAULT_PROJECT
+
+    # Write config
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_file.write_text(f"server: {server}\nproject: {project}\n")
+
+    # Write netrc
+    entry = f"machine {hostname} login _ password {token}\n"
+    if netrc_path.exists():
+        existing = netrc_path.read_text()
+        if hostname not in existing:
+            netrc_path.write_text(existing.rstrip("\n") + "\n" + entry)
+    else:
+        netrc_path.write_text(entry)
+        netrc_path.chmod(0o600)
+
+    print(f"\nConfig written to {config_file}")
+    print(f"Token saved to {netrc_path}")
+
+
 import argparse
 
 
 def build_parser():
     parser = argparse.ArgumentParser(prog="nhse-jira", description="CLI for NHSE Jira")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    subparsers.add_parser("init", help="Set up config and authentication")
 
     view_parser = subparsers.add_parser("view", help="View issue details")
     view_parser.add_argument("issue", help="Issue key or number")
@@ -289,6 +339,10 @@ def build_parser():
 def main():
     parser = build_parser()
     args = parser.parse_args()
+
+    if args.command == "init":
+        cmd_init()
+        return
 
     config = load_config()
     token = load_token(config["server"])

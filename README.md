@@ -4,43 +4,17 @@ Lightweight CLI for the NHSE self-hosted Jira instance.
 
 ## Setup
 
-### 1. Create a Personal Access Token
-
-Go to https://nhsd-jira.digital.nhs.uk/secure/ViewProfile.jspa?selectedTab=com.atlassian.pats.pats-plugin:jira-user-personal-access-tokens
-
-Click **Create token**, give it a name, and copy the value.
-
-### 2. Add the token to ~/.netrc
-
 ```
-machine nhsd-jira.digital.nhs.uk login _ password <your-token>
+./nhse-jira init
 ```
 
-Make sure the file permissions are restricted:
+This will walk you through:
 
-```
-chmod 600 ~/.netrc
-```
+1. Configuring the Jira server URL (default: `https://nhsd-jira.digital.nhs.uk`)
+2. Creating a Personal Access Token (with a link to the token page)
+3. Setting the default project (default: `MAV`)
 
-### 3. Create the config file
-
-```
-mkdir -p ~/.config/nhse-jira
-```
-
-Create `~/.config/nhse-jira/config.yml`:
-
-```yaml
-server: https://nhsd-jira.digital.nhs.uk
-project: MAV
-```
-
-### 4. Run it
-
-```
-./nhse-jira view MAV-5902
-./nhse-jira view 5902
-```
+Config is saved to `~/.config/nhse-jira/config.yml` and the token to `~/.netrc`.
 
 ## Commands
 
