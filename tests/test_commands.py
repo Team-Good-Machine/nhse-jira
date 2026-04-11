@@ -116,6 +116,20 @@ class TestCmdTransition:
         assert "Done" in output
         assert "Open" in output
 
+    def test_no_status_lists_available(self, capsys):
+        session = MagicMock()
+        session.get.return_value.ok = True
+        session.get.return_value.json.return_value = SAMPLE_TRANSITIONS
+
+        nhse_jira.cmd_transition(session, "https://jira.example.com", "MAV-5902", None)
+
+        session.post.assert_not_called()
+        output = capsys.readouterr().out
+        assert "MAV-5902" in output
+        assert "In Progress" in output
+        assert "Done" in output
+        assert "Open" in output
+
 
 SAMPLE_RELEASE_SEARCH = {
     "issues": [

@@ -202,9 +202,16 @@ def cmd_list(session, base_url, project, jql="", mine=False, status=None, limit=
     print(format_issue_table(data))
 
 
-def cmd_transition(session, base_url, issue_key, target_status):
+def cmd_transition(session, base_url, issue_key, target_status=None):
     data = api_get(session, base_url, f"issue/{issue_key}/transitions")
     transitions = data["transitions"]
+    available = [t["to"]["name"] for t in transitions]
+
+    if target_status is None:
+        print(f"Available transitions for {issue_key}:")
+        for name in available:
+            print(f"  {name}")
+        return
 
     match = None
     for t in transitions:
@@ -213,7 +220,6 @@ def cmd_transition(session, base_url, issue_key, target_status):
             break
 
     if match is None:
-        available = [t["to"]["name"] for t in transitions]
         print(
             f"Error: Cannot transition {issue_key} to '{target_status}'\n"
             f"Available transitions: {', '.join(available)}",
@@ -269,7 +275,7 @@ def build_parser():
 
     trans_parser = subparsers.add_parser("transition", help="Transition an issue")
     trans_parser.add_argument("issue", help="Issue key or number")
-    trans_parser.add_argument("status", help="Target status name")
+    trans_parser.add_argument("status", nargs="?", default=None, help="Target status (omit to list available)")
 
     release_parser = subparsers.add_parser("release", help="List issues in a release")
     release_parser.add_argument("version", help="Version name")
