@@ -62,6 +62,80 @@ def normalize_jql(jql, default_project):
     return jql
 
 
+BOLD = "\033[1m"
+RESET = "\033[0m"
+CYAN = "\033[36m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+
+
+def format_issue(issue):
+    key = issue["key"]
+    fields = issue["fields"]
+    summary = fields["summary"]
+    status = fields["status"]["name"]
+    assignee = fields.get("assignee")
+    assignee_name = assignee["displayName"] if assignee else "Unassigned"
+    reporter = fields["reporter"]["displayName"]
+    description = fields.get("description") or "No description"
+
+    lines = [
+        f"{BOLD}{key}: {summary}{RESET}",
+        f"{CYAN}Status:{RESET}   {status}",
+        f"{CYAN}Assignee:{RESET} {assignee_name}",
+        f"{CYAN}Reporter:{RESET} {reporter}",
+        "",
+        description,
+    ]
+
+    comments = fields.get("comment", {}).get("comments", [])
+    if comments:
+        last_3 = comments[-3:]
+        lines.append("")
+        lines.append(f"{BOLD}Comments ({len(last_3)}):{RESET}")
+        for comment in last_3:
+            author = comment["author"]["displayName"]
+            body = comment["body"]
+            lines.append(f"  {GREEN}{author}:{RESET} {body}")
+
+    return "\n".join(lines)
+
+
+def format_issue_table(data):
+    issues = data["issues"]
+    if not issues:
+        return "No issues found"
+
+    rows = []
+    for issue in issues:
+        key = issue["key"]
+        summary = issue["fields"]["summary"]
+        status = issue["fields"]["status"]["name"]
+        rows.append((key, summary, status))
+
+    key_width = max(len(r[0]) for r in rows)
+    status_width = max(len(r[2]) for r in rows)
+
+    lines = []
+    for key, summary, status in rows:
+        lines.append(
+            f"{CYAN}{key:<{key_width}}{RESET}  {summary}  {YELLOW}{status:<{status_width}}{RESET}"
+        )
+    return "\n".join(lines)
+
+
+def format_release(data):
+    issues = data["issues"]
+    if not issues:
+        return "No issues found"
+    lines = []
+    for issue in issues:
+        key = issue["key"]
+        summary = issue["fields"]["summary"]
+        lines.append(f"{CYAN}[{key}]{RESET} {summary}")
+    return "\n".join(lines)
+
+
 def main():
     pass
 
