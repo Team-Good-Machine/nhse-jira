@@ -4,6 +4,50 @@
 # dependencies = ["requests", "pyyaml"]
 # ///
 
+import sys
+import netrc as netrc_mod
+from pathlib import Path
+from urllib.parse import urlparse
+
+import yaml
+
+
+DEFAULT_CONFIG_PATH = Path.home() / ".config" / "nhse-jira" / "config.yml"
+DEFAULT_NETRC_PATH = Path.home() / ".netrc"
+
+
+def load_config(config_path=DEFAULT_CONFIG_PATH):
+    config_path = Path(config_path)
+    if not config_path.exists():
+        print(f"Error: Config file not found: {config_path}", file=sys.stderr)
+        raise SystemExit(f"Config file not found: {config_path}")
+    with open(config_path) as f:
+        return yaml.safe_load(f)
+
+
+def load_token(server_url, netrc_path=DEFAULT_NETRC_PATH):
+    hostname = urlparse(server_url).hostname
+    try:
+        nrc = netrc_mod.netrc(str(netrc_path))
+    except FileNotFoundError:
+        print(
+            f"Error: No .netrc file found at {netrc_path}\n"
+            "Create a Personal Access Token in Jira and add it:\n"
+            f"  machine {hostname} login _ password <your-token>",
+            file=sys.stderr,
+        )
+        raise SystemExit(f"No .netrc entry for {hostname}")
+    auth = nrc.authenticators(hostname)
+    if auth is None:
+        print(
+            f"Error: No .netrc entry for {hostname}\n"
+            "Add this line to your ~/.netrc:\n"
+            f"  machine {hostname} login _ password <your-token>",
+            file=sys.stderr,
+        )
+        raise SystemExit(f"No .netrc entry for {hostname}")
+    return auth[2]
+
 
 def main():
     pass
