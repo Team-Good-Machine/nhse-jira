@@ -173,6 +173,11 @@ def api_post(session, base_url, path, json=None):
         return resp.json()
 
 
+def cmd_view(session, base_url, issue_key):
+    data = api_get(session, base_url, f"issue/{issue_key}")
+    print(format_issue(data))
+
+
 def main():
     pass
 
