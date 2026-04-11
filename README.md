@@ -42,6 +42,44 @@ project: MAV
 ./nhse-jira view 5902
 ```
 
+## Commands
+
+### View an issue
+
+```
+./nhse-jira view MAV-5902
+./nhse-jira view 5902          # uses default project
+```
+
+### Search issues
+
+```
+./nhse-jira list "status = 'In Progress'"
+./nhse-jira list --mine
+./nhse-jira list --mine --status "In Progress"
+./nhse-jira list --limit 10 "type = Bug"
+```
+
+### Transition an issue
+
+```
+./nhse-jira transition 5902 "In Progress"
+./nhse-jira transition MAV-5902 Done
+```
+
+### List project versions
+
+```
+./nhse-jira releases
+./nhse-jira releases --unreleased
+```
+
+### List issues in a release
+
+```
+./nhse-jira release 7.8.0
+```
+
 ## Requirements
 
 - Python 3.12+
