@@ -83,6 +83,34 @@ Config is saved to `~/.config/nhse-jira/config.yml` and the token to `~/.netrc`.
 ./nhse-jira release 7.8.0
 ```
 
+## Custom fields
+
+Custom fields are configured in `~/.config/nhse-jira/config.yml`. The MAV project
+comes pre-configured with fields for testing and clinical assurance (via `nhse-jira init`).
+
+Three display formats are supported:
+
+- `option` — Jira select fields (shown as metadata, e.g. "Clinical Severity: Low")
+- `string` — plain text (shown as a section below the description)
+- `checklist` — Smart Checklist (parsed and shown as a checklist with status markers)
+
+Fields under `metadata` appear in the header. Fields under `sections` appear after the description.
+
+```yaml
+custom_fields:
+  metadata:
+    Clinical Severity:
+      field: customfield_37401
+      format: option
+  sections:
+    Test Summary:
+      field: customfield_37407
+      format: string
+    Smart Checklist:
+      field: customfield_22905
+      format: checklist
+```
+
 ## Requirements
 
 - Python 3.12+
