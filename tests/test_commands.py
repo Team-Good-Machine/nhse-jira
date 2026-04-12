@@ -206,3 +206,35 @@ class TestCmdReleases:
         assert "7.7.0" not in output
         assert "7.8.0" in output
         assert "7.9.0" in output
+
+
+class TestCmdViewCustomFields:
+    def test_passes_custom_fields_to_format(self, capsys):
+        issue = {
+            "key": "MAV-100",
+            "fields": {
+                "summary": "Test issue",
+                "status": {"name": "Open"},
+                "assignee": None,
+                "reporter": {"displayName": "Bob"},
+                "description": "Desc",
+                "comment": {"comments": []},
+                "fixVersions": [],
+                "customfield_37401": {"value": "High", "id": "1"},
+            },
+        }
+        session = _mock_session(issue)
+        custom_fields = {
+            "metadata": {
+                "Clinical Severity": {
+                    "field": "customfield_37401",
+                    "format": "option",
+                },
+            },
+        }
+
+        nhse_jira.cmd_view(session, "https://jira.example.com", "MAV-100", custom_fields=custom_fields)
+
+        output = capsys.readouterr().out
+        assert "Clinical Severity" in output
+        assert "High" in output

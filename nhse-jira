@@ -225,9 +225,9 @@ def api_post(session, base_url, path, json=None):
         return resp.json()
 
 
-def cmd_view(session, base_url, issue_key):
+def cmd_view(session, base_url, issue_key, custom_fields=None):
     data = api_get(session, base_url, f"issue/{issue_key}")
-    print(format_issue(data))
+    print(format_issue(data, custom_fields=custom_fields))
 
 
 def build_list_jql(jql="", mine=False, status=None):
@@ -339,7 +339,29 @@ def cmd_init(config_dir=None, netrc_path=None):
 
     # Write config
     config_dir.mkdir(parents=True, exist_ok=True)
-    config_file.write_text(f"server: {server}\nproject: {project}\n")
+    config_content = f"server: {server}\nproject: {project}\n"
+    if project.upper() == "MAV":
+        config_content += (
+            "custom_fields:\n"
+            "  metadata:\n"
+            "    Clinical Severity:\n"
+            "      field: customfield_37401\n"
+            "      format: option\n"
+            "    Clinical Safety:\n"
+            "      field: customfield_10595\n"
+            "      format: option\n"
+            "    Checklist Progress:\n"
+            "      field: customfield_22907\n"
+            "      format: string\n"
+            "  sections:\n"
+            "    Test Summary:\n"
+            "      field: customfield_37407\n"
+            "      format: string\n"
+            "    Smart Checklist:\n"
+            "      field: customfield_22905\n"
+            "      format: checklist\n"
+        )
+    config_file.write_text(config_content)
 
     # Write netrc
     entry = f"machine {hostname} login _ password {token}\n"
@@ -427,7 +449,7 @@ def main():
 
     if args.command == "view":
         issue_key = normalize_key(args.issue, project)
-        cmd_view(session, base_url, issue_key)
+        cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"))
     elif args.command == "list":
         cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit)
     elif args.command == "transition":
