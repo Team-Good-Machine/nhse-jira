@@ -34,3 +34,30 @@ def test_load_token_missing_entry_raises(tmp_path):
 
     with pytest.raises(SystemExit, match="No .netrc entry"):
         nhse_jira.load_token("https://example.com", netrc_file)
+
+
+def test_load_config_with_custom_fields(tmp_path):
+    config_file = tmp_path / "config.yml"
+    config_file.write_text(
+        "server: https://example.com\n"
+        "project: TEST\n"
+        "custom_fields:\n"
+        "  metadata:\n"
+        "    Clinical Severity:\n"
+        "      field: customfield_37401\n"
+        "      format: option\n"
+    )
+
+    config = nhse_jira.load_config(config_file)
+
+    assert config["custom_fields"]["metadata"]["Clinical Severity"]["field"] == "customfield_37401"
+    assert config["custom_fields"]["metadata"]["Clinical Severity"]["format"] == "option"
+
+
+def test_load_config_without_custom_fields(tmp_path):
+    config_file = tmp_path / "config.yml"
+    config_file.write_text("server: https://example.com\nproject: TEST\n")
+
+    config = nhse_jira.load_config(config_file)
+
+    assert config.get("custom_fields") is None
