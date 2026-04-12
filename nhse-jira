@@ -71,7 +71,15 @@ GREEN = "\033[32m"
 YELLOW = "\033[33m"
 
 
-def format_issue(issue):
+def _format_custom_value(raw, fmt):
+    if raw is None:
+        return "None"
+    if fmt == "option":
+        return raw.get("value", str(raw)) if isinstance(raw, dict) else str(raw)
+    return str(raw)
+
+
+def format_issue(issue, custom_fields=None):
     key = issue["key"]
     fields = issue["fields"]
     summary = fields["summary"]
@@ -89,9 +97,16 @@ def format_issue(issue):
         f"{CYAN}Assignee:{RESET}    {assignee_name}",
         f"{CYAN}Reporter:{RESET}    {reporter}",
         f"{CYAN}Fix Version:{RESET} {fix_version_str}",
-        "",
-        description,
     ]
+
+    if custom_fields:
+        for label, cfg in custom_fields.get("metadata", {}).items():
+            raw = fields.get(cfg["field"])
+            value = _format_custom_value(raw, cfg.get("format", "string"))
+            lines.append(f"{CYAN}{label}:{RESET} {value}")
+
+    lines.append("")
+    lines.append(description)
 
     comments = fields.get("comment", {}).get("comments", [])
     if comments:

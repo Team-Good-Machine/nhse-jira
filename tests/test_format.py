@@ -65,6 +65,39 @@ class TestFormatIssue:
         output = nhse_jira.format_issue(self._make_issue(fixVersions=[]))
         assert "None" in output
 
+    def test_shows_option_custom_field(self):
+        custom_fields = {
+            "metadata": {
+                "Clinical Severity": {
+                    "field": "customfield_37401",
+                    "format": "option",
+                },
+            },
+        }
+        issue = self._make_issue(
+            customfield_37401={"value": "Low", "id": "51010"},
+        )
+        output = nhse_jira.format_issue(issue, custom_fields=custom_fields)
+        assert "Clinical Severity" in output
+        assert "Low" in output
+
+    def test_option_custom_field_null_value(self):
+        custom_fields = {
+            "metadata": {
+                "Clinical Severity": {
+                    "field": "customfield_37401",
+                    "format": "option",
+                },
+            },
+        }
+        issue = self._make_issue(customfield_37401=None)
+        output = nhse_jira.format_issue(issue, custom_fields=custom_fields)
+        assert "Clinical Severity" in output
+
+    def test_no_custom_fields_config(self):
+        output = nhse_jira.format_issue(self._make_issue())
+        assert "MAV-5902" in output
+
 
 class TestFormatIssueTable:
     def test_formats_rows(self):
