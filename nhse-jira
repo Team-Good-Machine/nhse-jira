@@ -312,25 +312,50 @@ def build_parser():
     parser = argparse.ArgumentParser(prog="nhse-jira", description="CLI for NHSE Jira")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    FMT = argparse.RawDescriptionHelpFormatter
+
     subparsers.add_parser("init", help="Set up config and authentication")
 
-    view_parser = subparsers.add_parser("view", help="View issue details")
+    view_parser = subparsers.add_parser("view", help="View issue details",
+        formatter_class=FMT,
+        epilog="examples:\n"
+               "  nhse-jira view MAV-5902   view by full key\n"
+               "  nhse-jira view 5902       uses default project")
     view_parser.add_argument("issue", help="Issue key or number")
 
-    list_parser = subparsers.add_parser("list", help="Search issues with JQL")
+    list_parser = subparsers.add_parser("list", help="Search issues with JQL",
+        formatter_class=FMT,
+        epilog="examples:\n"
+               "  nhse-jira list --mine                       my open issues\n"
+               "  nhse-jira list --mine --status \"In Progress\" my in-progress issues\n"
+               "  nhse-jira list \"type = Bug\"                  JQL search\n"
+               "  nhse-jira list --limit 10 \"priority = High\" limited results")
     list_parser.add_argument("jql", nargs="?", default="", help="JQL query")
     list_parser.add_argument("--mine", action="store_true", help="Only my issues")
     list_parser.add_argument("--status", help="Filter by status")
     list_parser.add_argument("--limit", type=int, default=50, help="Max results (default: 50)")
 
-    trans_parser = subparsers.add_parser("transition", help="Transition an issue")
+    trans_parser = subparsers.add_parser("transition", help="Transition an issue",
+        formatter_class=FMT,
+        epilog="examples:\n"
+               "  nhse-jira transition 5902              list available transitions\n"
+               "  nhse-jira transition 5902 \"In Progress\" move to In Progress\n"
+               "  nhse-jira transition MAV-5902 Done     mark as done")
     trans_parser.add_argument("issue", help="Issue key or number")
     trans_parser.add_argument("status", nargs="?", default=None, help="Target status (omit to list available)")
 
-    release_parser = subparsers.add_parser("release", help="List issues in a release")
+    release_parser = subparsers.add_parser("release", help="List issues in a release",
+        formatter_class=FMT,
+        epilog="examples:\n"
+               "  nhse-jira release 7.8.0\n"
+               "  nhse-jira release \"v7.8.0\"")
     release_parser.add_argument("version", help="Version name")
 
-    releases_parser = subparsers.add_parser("releases", help="List project versions")
+    releases_parser = subparsers.add_parser("releases", help="List project versions",
+        formatter_class=FMT,
+        epilog="examples:\n"
+               "  nhse-jira releases              all versions\n"
+               "  nhse-jira releases --unreleased  only unreleased")
     releases_parser.add_argument("--unreleased", action="store_true", help="Only unreleased versions")
 
     return parser
