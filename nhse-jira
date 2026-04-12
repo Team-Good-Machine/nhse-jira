@@ -80,12 +80,15 @@ def format_issue(issue):
     assignee_name = assignee["displayName"] if assignee else "Unassigned"
     reporter = fields["reporter"]["displayName"]
     description = fields.get("description") or "No description"
+    fix_versions = fields.get("fixVersions", [])
+    fix_version_str = ", ".join(v["name"] for v in fix_versions) if fix_versions else "None"
 
     lines = [
         f"{BOLD}{key}: {summary}{RESET}",
-        f"{CYAN}Status:{RESET}   {status}",
-        f"{CYAN}Assignee:{RESET} {assignee_name}",
-        f"{CYAN}Reporter:{RESET} {reporter}",
+        f"{CYAN}Status:{RESET}      {status}",
+        f"{CYAN}Assignee:{RESET}    {assignee_name}",
+        f"{CYAN}Reporter:{RESET}    {reporter}",
+        f"{CYAN}Fix Version:{RESET} {fix_version_str}",
         "",
         description,
     ]

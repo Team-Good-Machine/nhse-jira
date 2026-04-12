@@ -48,6 +48,23 @@ class TestFormatIssue:
         assert "User4" in output
         assert "User0" not in output
 
+    def test_shows_fix_version(self):
+        output = nhse_jira.format_issue(self._make_issue(
+            fixVersions=[{"name": "7.8.0"}]
+        ))
+        assert "7.8.0" in output
+
+    def test_shows_multiple_fix_versions(self):
+        output = nhse_jira.format_issue(self._make_issue(
+            fixVersions=[{"name": "7.8.0"}, {"name": "7.9.0"}]
+        ))
+        assert "7.8.0" in output
+        assert "7.9.0" in output
+
+    def test_no_fix_version(self):
+        output = nhse_jira.format_issue(self._make_issue(fixVersions=[]))
+        assert "None" in output
+
 
 class TestFormatIssueTable:
     def test_formats_rows(self):
