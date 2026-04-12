@@ -98,6 +98,35 @@ class TestFormatIssue:
         output = nhse_jira.format_issue(self._make_issue())
         assert "MAV-5902" in output
 
+    def test_shows_string_section(self):
+        custom_fields = {
+            "sections": {
+                "Test Summary": {
+                    "field": "customfield_37407",
+                    "format": "string",
+                },
+            },
+        }
+        issue = self._make_issue(
+            customfield_37407="Automation evidence for end to end testing.",
+        )
+        output = nhse_jira.format_issue(issue, custom_fields=custom_fields)
+        assert "Test Summary" in output
+        assert "Automation evidence for end to end testing." in output
+
+    def test_string_section_null_skipped(self):
+        custom_fields = {
+            "sections": {
+                "Test Summary": {
+                    "field": "customfield_37407",
+                    "format": "string",
+                },
+            },
+        }
+        issue = self._make_issue(customfield_37407=None)
+        output = nhse_jira.format_issue(issue, custom_fields=custom_fields)
+        assert "Test Summary" not in output
+
 
 class TestFormatIssueTable:
     def test_formats_rows(self):
