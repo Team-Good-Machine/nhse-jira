@@ -128,6 +128,36 @@ class TestFormatIssue:
         assert "Test Summary" not in output
 
 
+class TestFormatChecklist:
+    SAMPLE_CHECKLIST = [
+        'Checklist(id=1, issueId=2, _items=['
+        'Item(id=10, checklistId=1, value=First item done, rank=0, '
+        'status=Status(id=4, rank=4, statusState=CHECKED, name=DONE, color=GREEN, '
+        'default=true, global=true, projectIds=[]), quotes=[], assignees=[], '
+        'history=null, mandatory=false, description=null, weight=null), '
+        'Item(id=11, checklistId=1, value=Second item in progress, rank=1, '
+        'status=Status(id=2, rank=2, statusState=UNCHECKED, name=TO DO, color=GRAY, '
+        'default=true, global=true, projectIds=[]), quotes=[], assignees=[], '
+        'history=null, mandatory=false, description=null, weight=null)'
+        '])'
+    ]
+
+    def test_parses_items_with_status(self):
+        output = nhse_jira._format_checklist(self.SAMPLE_CHECKLIST)
+        assert "First item done" in output
+        assert "Second item in progress" in output
+        assert "DONE" in output
+        assert "TO DO" in output
+
+    def test_empty_checklist(self):
+        output = nhse_jira._format_checklist([])
+        assert output == "No items"
+
+    def test_none_checklist(self):
+        output = nhse_jira._format_checklist(None)
+        assert output == "No items"
+
+
 class TestFormatIssueTable:
     def test_formats_rows(self):
         data = {

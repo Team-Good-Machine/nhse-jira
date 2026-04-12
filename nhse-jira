@@ -136,7 +136,21 @@ def format_issue(issue, custom_fields=None):
 
 
 def _format_checklist(raw):
-    return str(raw)
+    if not raw:
+        return "No items"
+    items = []
+    for entry in raw:
+        matches = re.findall(
+            r"value=(.*?), rank=\d+, status=Status\([^)]*name=(\w[\w ]*)",
+            entry,
+        )
+        for value, status in matches:
+            if status == "DONE":
+                marker = f"{GREEN}[DONE]{RESET}"
+            else:
+                marker = f"{YELLOW}[{status}]{RESET}"
+            items.append(f"  {marker} {value}")
+    return "\n".join(items) if items else "No items"
 
 
 def format_issue_table(data):
