@@ -2,10 +2,38 @@
 
 Lightweight CLI for the NHSE self-hosted Jira instance.
 
+## Installation
+
+Symlink the script into a directory on your PATH:
+
+```
+mkdir -p ~/.local/bin
+ln -s "$(pwd)/nhse-jira" ~/.local/bin/nhse-jira
+```
+
+If `~/.local/bin` isn't already on your PATH, add it to your shell config:
+
+**zsh** (macOS default):
+```
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+```
+
+**bash**:
+```
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+**fish**:
+```
+fish_add_path ~/.local/bin
+```
+
+Now `nhse-jira` works from any directory.
+
 ## Setup
 
 ```
-./nhse-jira init
+nhse-jira init
 ```
 
 This will walk you through:
