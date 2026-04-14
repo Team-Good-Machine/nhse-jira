@@ -45,6 +45,17 @@ class TestResolveFields:
         )
         assert result == [("Test Summary", "customfield_37407", "string")]
 
+    def test_resolves_standard_field_assignee(self):
+        result = nhse_jira.resolve_fields(["assignee"], self.SAMPLE_CUSTOM_FIELDS)
+        assert result == [("Assignee", "assignee", "user")]
+
+    def test_resolves_mix_of_standard_and_custom(self):
+        result = nhse_jira.resolve_fields(
+            ["assignee", "clinical safety"], self.SAMPLE_CUSTOM_FIELDS
+        )
+        assert result[0] == ("Assignee", "assignee", "user")
+        assert result[1] == ("Clinical Safety", "customfield_10595", "option")
+
     def test_unknown_field_raises(self):
         import pytest
         with pytest.raises(SystemExit, match="Unknown field"):

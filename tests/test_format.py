@@ -229,6 +229,40 @@ class TestFormatIssueTable:
         output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
         assert "None" in output
 
+    def test_extra_fields_assignee(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "Done"},
+                        "assignee": {"displayName": "Alice"},
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Assignee", "assignee", "user")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "Alice" in output
+
+    def test_extra_fields_assignee_null(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "Done"},
+                        "assignee": None,
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Assignee", "assignee", "user")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "Unassigned" in output
+
     def test_extra_fields_default_unchanged(self):
         """Existing behaviour: no extra_fields still works."""
         data = {

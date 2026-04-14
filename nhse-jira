@@ -64,11 +64,17 @@ def normalize_jql(jql, default_project):
     return jql
 
 
+STANDARD_FIELDS = {
+    "assignee": ("Assignee", "assignee", "user"),
+    "reporter": ("Reporter", "reporter", "user"),
+}
+
+
 def resolve_fields(field_names, custom_fields):
     if not field_names:
         return []
-    # Build lookup from all custom fields (metadata + sections)
-    lookup = {}
+    # Build lookup from standard fields + custom fields (metadata + sections)
+    lookup = dict(STANDARD_FIELDS)
     for section in ("metadata", "sections"):
         for label, cfg in custom_fields.get(section, {}).items():
             lookup[label.lower()] = (label, cfg["field"], cfg.get("format", "string"))
@@ -91,9 +97,11 @@ YELLOW = "\033[33m"
 
 def _format_custom_value(raw, fmt):
     if raw is None:
-        return "None"
+        return "Unassigned" if fmt == "user" else "None"
     if fmt == "option":
         return raw.get("value", str(raw)) if isinstance(raw, dict) else str(raw)
+    if fmt == "user":
+        return raw.get("displayName", str(raw)) if isinstance(raw, dict) else str(raw)
     return str(raw)
 
 
