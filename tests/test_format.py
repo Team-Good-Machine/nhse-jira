@@ -177,6 +177,69 @@ class TestFormatIssueTable:
         output = nhse_jira.format_issue_table({"issues": []})
         assert output == "No issues found"
 
+    def test_extra_fields_option_type(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "Done"},
+                        "customfield_10595": {"value": "Triaged"},
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Clinical Safety", "customfield_10595", "option")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "MAV-1" in output
+        assert "Triaged" in output
+
+    def test_extra_fields_string_type(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "Done"},
+                        "customfield_22907": "9/9 - Done",
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Progress", "customfield_22907", "string")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "9/9 - Done" in output
+
+    def test_extra_fields_null_value(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "Done"},
+                        "customfield_10595": None,
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Clinical Safety", "customfield_10595", "option")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "None" in output
+
+    def test_extra_fields_default_unchanged(self):
+        """Existing behaviour: no extra_fields still works."""
+        data = {
+            "issues": [
+                {"key": "MAV-1", "fields": {"summary": "First", "status": {"name": "Done"}}},
+            ]
+        }
+        output = nhse_jira.format_issue_table(data)
+        assert "MAV-1" in output
+        assert "Done" in output
+
 
 class TestFormatRelease:
     def test_formats_issue_list(self):

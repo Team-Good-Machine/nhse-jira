@@ -77,6 +77,57 @@ class TestCmdList:
         assert "MAV-1" in output
         assert "First" in output
 
+    def test_with_extra_fields(self, capsys):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "Done"},
+                        "customfield_10595": {"value": "Triaged"},
+                    },
+                },
+            ]
+        }
+        session = _mock_session(data)
+        extra_fields = [("Clinical Safety", "customfield_10595", "option")]
+
+        nhse_jira.cmd_list(
+            session, "https://jira.example.com", "MAV",
+            jql="status = Done", extra_fields=extra_fields,
+        )
+
+        output = capsys.readouterr().out
+        assert "Triaged" in output
+
+
+class TestCmdReleaseFields:
+    def test_with_extra_fields(self, capsys):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "Done"},
+                        "customfield_22907": "9/9 - Done",
+                    },
+                },
+            ]
+        }
+        session = _mock_session(data)
+        extra_fields = [("Progress", "customfield_22907", "string")]
+
+        nhse_jira.cmd_release(
+            session, "https://jira.example.com", "MAV", "7.9.0",
+            extra_fields=extra_fields,
+        )
+
+        output = capsys.readouterr().out
+        assert "MAV-1" in output
+        assert "9/9 - Done" in output
+
 
 SAMPLE_TRANSITIONS = {
     "transitions": [

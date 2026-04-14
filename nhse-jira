@@ -64,6 +64,24 @@ def normalize_jql(jql, default_project):
     return jql
 
 
+def resolve_fields(field_names, custom_fields):
+    if not field_names:
+        return []
+    # Build lookup from all custom fields (metadata + sections)
+    lookup = {}
+    for section in ("metadata", "sections"):
+        for label, cfg in custom_fields.get(section, {}).items():
+            lookup[label.lower()] = (label, cfg["field"], cfg.get("format", "string"))
+    result = []
+    for name in field_names:
+        key = name.strip().lower()
+        if key not in lookup:
+            print(f"Error: Unknown field '{name}'", file=sys.stderr)
+            raise SystemExit(f"Unknown field: {name}")
+        result.append(lookup[key])
+    return result
+
+
 BOLD = "\033[1m"
 RESET = "\033[0m"
 CYAN = "\033[36m"
@@ -153,7 +171,7 @@ def _format_checklist(raw):
     return "\n".join(items) if items else "No items"
 
 
-def format_issue_table(data):
+def format_issue_table(data, extra_fields=None):
     issues = data["issues"]
     if not issues:
         return "No issues found"
@@ -163,16 +181,26 @@ def format_issue_table(data):
         key = issue["key"]
         summary = issue["fields"]["summary"]
         status = issue["fields"]["status"]["name"]
-        rows.append((key, summary, status))
+        extras = []
+        if extra_fields:
+            for _label, field_id, fmt in extra_fields:
+                raw = issue["fields"].get(field_id)
+                extras.append(_format_custom_value(raw, fmt))
+        rows.append((key, summary, status, extras))
 
     key_width = max(len(r[0]) for r in rows)
     status_width = max(len(r[2]) for r in rows)
+    extra_widths = []
+    if extra_fields:
+        for i, (_label, _fid, _fmt) in enumerate(extra_fields):
+            extra_widths.append(max(len(r[3][i]) for r in rows))
 
     lines = []
-    for key, summary, status in rows:
-        lines.append(
-            f"{CYAN}{key:<{key_width}}{RESET}  {summary}  {YELLOW}{status:<{status_width}}{RESET}"
-        )
+    for key, summary, status, extras in rows:
+        line = f"{CYAN}{key:<{key_width}}{RESET}  {summary}  {YELLOW}{status:<{status_width}}{RESET}"
+        for i, val in enumerate(extras):
+            line += f"  {val:<{extra_widths[i]}}"
+        lines.append(line)
     return "\n".join(lines)
 
 
@@ -243,14 +271,17 @@ def build_list_jql(jql="", mine=False, status=None):
     return " AND ".join(parts)
 
 
-def cmd_list(session, base_url, project, jql="", mine=False, status=None, limit=50):
+def cmd_list(session, base_url, project, jql="", mine=False, status=None, limit=50, extra_fields=None):
     query = build_list_jql(jql=jql, mine=mine, status=status)
     query = normalize_jql(query, project)
+    api_fields = "summary,status"
+    if extra_fields:
+        api_fields += "," + ",".join(fid for _label, fid, _fmt in extra_fields)
     data = api_get(
         session, base_url, "search",
-        params={"jql": query, "maxResults": limit, "fields": "summary,status"},
+        params={"jql": query, "maxResults": limit, "fields": api_fields},
     )
-    print(format_issue_table(data))
+    print(format_issue_table(data, extra_fields=extra_fields))
 
 
 def cmd_transition(session, base_url, issue_key, target_status=None):
@@ -282,13 +313,19 @@ def cmd_transition(session, base_url, issue_key, target_status=None):
     print(f"Transitioned {issue_key} to {target_status}")
 
 
-def cmd_release(session, base_url, project, version_name):
+def cmd_release(session, base_url, project, version_name, extra_fields=None):
     jql = f'project = {project} AND fixVersion = "{version_name}" ORDER BY key ASC'
+    api_fields = "summary,status"
+    if extra_fields:
+        api_fields += "," + ",".join(fid for _label, fid, _fmt in extra_fields)
     data = api_get(
         session, base_url, "search",
-        params={"jql": jql, "maxResults": 200, "fields": "summary"},
+        params={"jql": jql, "maxResults": 200, "fields": api_fields},
     )
-    print(format_release(data))
+    if extra_fields:
+        print(format_issue_table(data, extra_fields=extra_fields))
+    else:
+        print(format_release(data))
 
 
 def cmd_releases(session, base_url, project, unreleased=False):
@@ -409,6 +446,7 @@ def build_parser():
     list_parser.add_argument("--mine", action="store_true", help="Only my issues")
     list_parser.add_argument("--status", help="Filter by status")
     list_parser.add_argument("--limit", type=int, default=50, help="Max results (default: 50)")
+    list_parser.add_argument("--fields", default=None, help="Extra fields to show (comma-separated custom field labels)")
 
     trans_parser = subparsers.add_parser("transition", help="Transition an issue",
         formatter_class=FMT,
@@ -425,6 +463,7 @@ def build_parser():
                "  nhse-jira release 7.8.0\n"
                "  nhse-jira release \"v7.8.0\"")
     release_parser.add_argument("version", help="Version name")
+    release_parser.add_argument("--fields", default=None, help="Extra fields to show (comma-separated custom field labels)")
 
     releases_parser = subparsers.add_parser("releases", help="List project versions",
         formatter_class=FMT,
@@ -454,12 +493,14 @@ def main():
         issue_key = normalize_key(args.issue, project)
         cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"))
     elif args.command == "list":
-        cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit)
+        extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}))
+        cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit, extra_fields=extra or None)
     elif args.command == "transition":
         issue_key = normalize_key(args.issue, project)
         cmd_transition(session, base_url, issue_key, args.status)
     elif args.command == "release":
-        cmd_release(session, base_url, project, args.version)
+        extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}))
+        cmd_release(session, base_url, project, args.version, extra_fields=extra or None)
     elif args.command == "releases":
         cmd_releases(session, base_url, project, unreleased=args.unreleased)
 
