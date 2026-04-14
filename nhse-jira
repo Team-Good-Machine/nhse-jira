@@ -461,9 +461,8 @@ def build_parser():
     release_parser = subparsers.add_parser("release", help="List issues in a release",
         formatter_class=FMT,
         epilog="examples:\n"
-               "  nhse-jira release 7.8.0\n"
-               "  nhse-jira release \"v7.8.0\"\n"
-               "  nhse-jira release 7.9.0 --fields \"clinical safety,checklist progress\" with assurance columns")
+               "  nhse-jira release v7.8.0\n"
+               "  nhse-jira release v7.9.0 --fields \"clinical safety,checklist progress\" with assurance columns")
     release_parser.add_argument("version", help="Version name")
     release_parser.add_argument("--fields", default=None, help="Extra fields to show (comma-separated custom field labels)")
 

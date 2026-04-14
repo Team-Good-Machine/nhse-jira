@@ -81,8 +81,8 @@ Config is saved to `~/.config/nhse-jira/config.yml` and the token to `~/.netrc`.
 ### List issues in a release
 
 ```
-./nhse-jira release 7.8.0
-./nhse-jira release 7.9.0 --fields "clinical safety,checklist progress"
+./nhse-jira release v7.8.0
+./nhse-jira release v7.9.0 --fields "clinical safety,checklist progress"
 ```
 
 ## Custom fields
