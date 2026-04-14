@@ -441,7 +441,8 @@ def build_parser():
                "  nhse-jira list --mine                       my open issues\n"
                "  nhse-jira list --mine --status \"In Progress\" my in-progress issues\n"
                "  nhse-jira list \"type = Bug\"                  JQL search\n"
-               "  nhse-jira list --limit 10 \"priority = High\" limited results")
+               "  nhse-jira list --limit 10 \"priority = High\" limited results\n"
+               "  nhse-jira list --mine --fields \"clinical safety,checklist progress\" with extra columns")
     list_parser.add_argument("jql", nargs="?", default="", help="JQL query")
     list_parser.add_argument("--mine", action="store_true", help="Only my issues")
     list_parser.add_argument("--status", help="Filter by status")
@@ -461,7 +462,8 @@ def build_parser():
         formatter_class=FMT,
         epilog="examples:\n"
                "  nhse-jira release 7.8.0\n"
-               "  nhse-jira release \"v7.8.0\"")
+               "  nhse-jira release \"v7.8.0\"\n"
+               "  nhse-jira release 7.9.0 --fields \"clinical safety,checklist progress\" with assurance columns")
     release_parser.add_argument("version", help="Version name")
     release_parser.add_argument("--fields", default=None, help="Extra fields to show (comma-separated custom field labels)")
 

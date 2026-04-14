@@ -60,6 +60,7 @@ Config is saved to `~/.config/nhse-jira/config.yml` and the token to `~/.netrc`.
 ./nhse-jira list --mine
 ./nhse-jira list --mine --status "In Progress"
 ./nhse-jira list --limit 10 "type = Bug"
+./nhse-jira list --mine --fields "clinical safety,checklist progress"
 ```
 
 ### Transition an issue
@@ -81,6 +82,7 @@ Config is saved to `~/.config/nhse-jira/config.yml` and the token to `~/.netrc`.
 
 ```
 ./nhse-jira release 7.8.0
+./nhse-jira release 7.9.0 --fields "clinical safety,checklist progress"
 ```
 
 ## Custom fields
