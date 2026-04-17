@@ -109,7 +109,7 @@ def _format_custom_value(raw, fmt):
     return str(raw)
 
 
-def format_issue(issue, custom_fields=None, epic_field=None):
+def format_issue(issue, custom_fields=None, epic_field=None, epic_name=None):
     key = issue["key"]
     fields = issue["fields"]
     summary = fields["summary"]
@@ -132,7 +132,8 @@ def format_issue(issue, custom_fields=None, epic_field=None):
     if epic_field:
         epic_key = fields.get(epic_field)
         if epic_key:
-            lines.append(f"{CYAN}Epic:{RESET}        {epic_key}")
+            epic_str = f"{epic_key} \u2014 {epic_name}" if epic_name else epic_key
+            lines.append(f"{CYAN}Epic:{RESET}        {epic_str}")
 
     if custom_fields:
         for label, cfg in custom_fields.get("metadata", {}).items():
@@ -291,7 +292,13 @@ def api_post(session, base_url, path, json=None):
 
 def cmd_view(session, base_url, issue_key, custom_fields=None, epic_field=None):
     data = api_get(session, base_url, f"issue/{issue_key}")
-    print(format_issue(data, custom_fields=custom_fields, epic_field=epic_field))
+    epic_name = None
+    if epic_field:
+        epic_key = data["fields"].get(epic_field)
+        if epic_key:
+            epic_data = api_get(session, base_url, f"issue/{epic_key}", params={"fields": "summary"})
+            epic_name = epic_data["fields"]["summary"]
+    print(format_issue(data, custom_fields=custom_fields, epic_field=epic_field, epic_name=epic_name))
 
 
 def build_list_jql(jql="", mine=False, status=None):

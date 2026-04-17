@@ -34,6 +34,33 @@ class TestCmdView:
         assert "Fix login bug" in output
         assert "Alice" in output
 
+    def test_fetches_epic_name(self, capsys):
+        issue = {
+            "key": "MAV-100",
+            "fields": {
+                "summary": "Child ticket",
+                "status": {"name": "Open"},
+                "assignee": {"displayName": "Alice"},
+                "reporter": {"displayName": "Bob"},
+                "description": "Desc",
+                "comment": {"comments": []},
+                "customfield_10005": "MAV-50",
+            },
+        }
+        epic = {
+            "key": "MAV-50",
+            "fields": {"summary": "Improve national reporting"},
+        }
+        session = MagicMock()
+        session.get.return_value.ok = True
+        session.get.return_value.json.side_effect = [issue, epic]
+
+        nhse_jira.cmd_view(session, "https://jira.example.com", "MAV-100", epic_field="customfield_10005")
+
+        output = capsys.readouterr().out
+        assert "MAV-50" in output
+        assert "Improve national reporting" in output
+
 
 SAMPLE_SEARCH = {
     "issues": [
