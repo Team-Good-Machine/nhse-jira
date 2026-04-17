@@ -17,6 +17,18 @@ class TestCmdInit:
         assert "https://nhsd-jira.digital.nhs.uk" in content
         assert "MAV" in content
 
+    def test_mav_config_includes_epic_field(self, tmp_path, capsys):
+        config_dir = tmp_path / ".config" / "nhse-jira"
+        netrc_path = tmp_path / ".netrc"
+
+        with patch("builtins.input", side_effect=["", ""]), \
+             patch("getpass.getpass", return_value="my-token"):
+            nhse_jira.cmd_init(config_dir=config_dir, netrc_path=netrc_path)
+
+        content = (config_dir / "config.yml").read_text()
+        assert "epic_field" in content
+        assert "customfield_10005" in content
+
     def test_creates_netrc_entry(self, tmp_path, capsys):
         config_dir = tmp_path / ".config" / "nhse-jira"
         netrc_path = tmp_path / ".netrc"

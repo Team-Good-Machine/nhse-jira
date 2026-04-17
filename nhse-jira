@@ -109,7 +109,7 @@ def _format_custom_value(raw, fmt):
     return str(raw)
 
 
-def format_issue(issue, custom_fields=None):
+def format_issue(issue, custom_fields=None, epic_field=None):
     key = issue["key"]
     fields = issue["fields"]
     summary = fields["summary"]
@@ -128,6 +128,11 @@ def format_issue(issue, custom_fields=None):
         f"{CYAN}Reporter:{RESET}    {reporter}",
         f"{CYAN}Fix Version:{RESET} {fix_version_str}",
     ]
+
+    if epic_field:
+        epic_key = fields.get(epic_field)
+        if epic_key:
+            lines.append(f"{CYAN}Epic:{RESET}        {epic_key}")
 
     if custom_fields:
         for label, cfg in custom_fields.get("metadata", {}).items():
@@ -284,9 +289,9 @@ def api_post(session, base_url, path, json=None):
         return resp.json()
 
 
-def cmd_view(session, base_url, issue_key, custom_fields=None):
+def cmd_view(session, base_url, issue_key, custom_fields=None, epic_field=None):
     data = api_get(session, base_url, f"issue/{issue_key}")
-    print(format_issue(data, custom_fields=custom_fields))
+    print(format_issue(data, custom_fields=custom_fields, epic_field=epic_field))
 
 
 def build_list_jql(jql="", mine=False, status=None):
@@ -409,6 +414,7 @@ def cmd_init(config_dir=None, netrc_path=None):
     config_dir.mkdir(parents=True, exist_ok=True)
     config_content = f"server: {server}\nproject: {project}\n"
     if project.upper() == "MAV":
+        config_content += "epic_field: customfield_10005\n"
         config_content += (
             "custom_fields:\n"
             "  metadata:\n"
@@ -524,7 +530,7 @@ def main():
     try:
         if args.command == "view":
             issue_key = normalize_key(args.issue, project)
-            cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"))
+            cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"), epic_field=config.get("epic_field"))
         elif args.command == "list":
             extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}))
             cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit, extra_fields=extra or None)

@@ -128,6 +128,49 @@ class TestFormatIssue:
         assert "Test Summary" not in output
 
 
+class TestFormatIssueEpic:
+    def _make_issue(self, **overrides):
+        issue = {
+            "key": "MAV-100",
+            "fields": {
+                "summary": "Test issue",
+                "status": {"name": "Open"},
+                "assignee": {"displayName": "Alice"},
+                "reporter": {"displayName": "Bob"},
+                "description": "Desc",
+                "comment": {"comments": []},
+            },
+        }
+        issue["fields"].update(overrides)
+        return issue
+
+    def test_shows_epic_link(self):
+        issue = self._make_issue(customfield_10005="MAV-2730")
+        output = nhse_jira.format_issue(issue, epic_field="customfield_10005")
+        assert "Epic" in output
+        assert "MAV-2730" in output
+
+    def test_no_epic_when_field_is_null(self):
+        issue = self._make_issue(customfield_10005=None)
+        output = nhse_jira.format_issue(issue, epic_field="customfield_10005")
+        assert "Epic" not in output
+
+    def test_no_epic_when_field_absent(self):
+        issue = self._make_issue()
+        output = nhse_jira.format_issue(issue, epic_field="customfield_10005")
+        assert "Epic" not in output
+
+    def test_no_epic_when_no_epic_field_configured(self):
+        issue = self._make_issue(customfield_10005="MAV-2730")
+        output = nhse_jira.format_issue(issue)
+        assert "Epic" not in output
+
+    def test_custom_epic_field(self):
+        issue = self._make_issue(customfield_99999="MAV-500")
+        output = nhse_jira.format_issue(issue, epic_field="customfield_99999")
+        assert "MAV-500" in output
+
+
 class TestFormatIssueLinks:
     def _make_issue(self, issuelinks):
         return {
