@@ -259,6 +259,28 @@ class TestCmdReleases:
         assert "7.9.0" in output
 
 
+class TestMainJiraErrorHandling:
+    def test_jira_error_prints_message_to_stderr(self, capsys, monkeypatch):
+        """JiraError should produce a clean error message, not a traceback."""
+        monkeypatch.setattr("sys.argv", ["nhse-jira", "release", "v99.0.0"])
+        monkeypatch.setattr(nhse_jira, "load_config", lambda: {"server": "https://jira.example.com", "project": "MAV"})
+        monkeypatch.setattr(nhse_jira, "load_token", lambda server: "fake")
+        monkeypatch.setattr(nhse_jira, "create_session", lambda token: MagicMock())
+
+        def fake_release(*a, **kw):
+            raise nhse_jira.JiraError("HTTP 400: The value 'v99.0.0' does not exist for the field 'fixVersion'.")
+
+        monkeypatch.setattr(nhse_jira, "cmd_release", fake_release)
+
+        with pytest.raises(SystemExit) as exc_info:
+            nhse_jira.main()
+
+        assert exc_info.value.code == 1
+        err = capsys.readouterr().err
+        assert "v99.0.0" in err
+        assert "Traceback" not in err
+
+
 class TestCmdViewCustomFields:
     def test_passes_custom_fields_to_format(self, capsys):
         issue = {

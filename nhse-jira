@@ -498,20 +498,24 @@ def main():
     base_url = config["server"]
     project = config["project"]
 
-    if args.command == "view":
-        issue_key = normalize_key(args.issue, project)
-        cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"))
-    elif args.command == "list":
-        extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}))
-        cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit, extra_fields=extra or None)
-    elif args.command == "transition":
-        issue_key = normalize_key(args.issue, project)
-        cmd_transition(session, base_url, issue_key, args.status)
-    elif args.command == "release":
-        extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}))
-        cmd_release(session, base_url, project, args.version, extra_fields=extra or None)
-    elif args.command == "releases":
-        cmd_releases(session, base_url, project, unreleased=args.unreleased)
+    try:
+        if args.command == "view":
+            issue_key = normalize_key(args.issue, project)
+            cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"))
+        elif args.command == "list":
+            extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}))
+            cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit, extra_fields=extra or None)
+        elif args.command == "transition":
+            issue_key = normalize_key(args.issue, project)
+            cmd_transition(session, base_url, issue_key, args.status)
+        elif args.command == "release":
+            extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}))
+            cmd_release(session, base_url, project, args.version, extra_fields=extra or None)
+        elif args.command == "releases":
+            cmd_releases(session, base_url, project, unreleased=args.unreleased)
+    except JiraError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
