@@ -93,6 +93,10 @@ RESET = "\033[0m"
 CYAN = "\033[36m"
 GREEN = "\033[32m"
 YELLOW = "\033[33m"
+RED = "\033[31m"
+BLUE = "\033[34m"
+MAGENTA = "\033[35m"
+ISSUE_TYPE_COLORS = {"Story": GREEN, "Bug": RED, "Task": BLUE}
 
 
 def _format_custom_value(raw, fmt):
@@ -130,6 +134,25 @@ def format_issue(issue, custom_fields=None):
             raw = fields.get(cfg["field"])
             value = _format_custom_value(raw, cfg.get("format", "string"))
             lines.append(f"{CYAN}{label}:{RESET} {value}")
+
+    issuelinks = fields.get("issuelinks", [])
+    if issuelinks:
+        lines.append("")
+        lines.append(f"{BOLD}Links:{RESET}")
+        for link in issuelinks:
+            if "outwardIssue" in link:
+                direction = link["type"]["outward"]
+                linked = link["outwardIssue"]
+            else:
+                direction = link["type"]["inward"]
+                linked = link["inwardIssue"]
+            lkey = linked["key"]
+            lsummary = linked["fields"]["summary"]
+            lstatus = linked["fields"]["status"]["name"]
+            ltype = linked["fields"]["issuetype"]["name"]
+            color = ISSUE_TYPE_COLORS.get(ltype, MAGENTA)
+            badge = f"{color}[{ltype[0].upper()}]{RESET}"
+            lines.append(f"  {direction} {badge} {lkey} ({lstatus}) {lsummary}")
 
     lines.append("")
     lines.append(description)

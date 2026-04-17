@@ -128,6 +128,126 @@ class TestFormatIssue:
         assert "Test Summary" not in output
 
 
+class TestFormatIssueLinks:
+    def _make_issue(self, issuelinks):
+        return {
+            "key": "MAV-100",
+            "fields": {
+                "summary": "Test issue",
+                "status": {"name": "Open"},
+                "assignee": {"displayName": "Alice"},
+                "reporter": {"displayName": "Bob"},
+                "description": "Desc",
+                "comment": {"comments": []},
+                "issuelinks": issuelinks,
+            },
+        }
+
+    def test_shows_outward_link(self):
+        issue = self._make_issue([{
+            "type": {"inward": "is depended on by", "outward": "depends on"},
+            "outwardIssue": {
+                "key": "MAV-200",
+                "fields": {
+                    "summary": "Add indexes",
+                    "status": {"name": "Backlog"},
+                    "issuetype": {"name": "Task"},
+                },
+            },
+        }])
+        output = nhse_jira.format_issue(issue)
+        assert "depends on" in output
+        assert "MAV-200" in output
+        assert "Backlog" in output
+        assert "Add indexes" in output
+
+    def test_shows_inward_link(self):
+        issue = self._make_issue([{
+            "type": {"inward": "is blocked by", "outward": "blocks"},
+            "inwardIssue": {
+                "key": "MAV-300",
+                "fields": {
+                    "summary": "Fix the widget",
+                    "status": {"name": "In Progress"},
+                    "issuetype": {"name": "Bug"},
+                },
+            },
+        }])
+        output = nhse_jira.format_issue(issue)
+        assert "is blocked by" in output
+        assert "MAV-300" in output
+        assert "In Progress" in output
+        assert "Fix the widget" in output
+
+    def test_shows_issue_type_badge(self):
+        issue = self._make_issue([
+            {
+                "type": {"inward": "relates to", "outward": "relates to"},
+                "outwardIssue": {
+                    "key": "MAV-400",
+                    "fields": {
+                        "summary": "A story",
+                        "status": {"name": "Open"},
+                        "issuetype": {"name": "Story"},
+                    },
+                },
+            },
+            {
+                "type": {"inward": "relates to", "outward": "relates to"},
+                "outwardIssue": {
+                    "key": "MAV-401",
+                    "fields": {
+                        "summary": "A bug",
+                        "status": {"name": "Open"},
+                        "issuetype": {"name": "Bug"},
+                    },
+                },
+            },
+            {
+                "type": {"inward": "relates to", "outward": "relates to"},
+                "outwardIssue": {
+                    "key": "MAV-402",
+                    "fields": {
+                        "summary": "A task",
+                        "status": {"name": "Open"},
+                        "issuetype": {"name": "Task"},
+                    },
+                },
+            },
+        ])
+        output = nhse_jira.format_issue(issue)
+        assert "[S]" in output
+        assert "[B]" in output
+        assert "[T]" in output
+
+    def test_unknown_issue_type_gets_generic_badge(self):
+        issue = self._make_issue([{
+            "type": {"inward": "relates to", "outward": "relates to"},
+            "outwardIssue": {
+                "key": "MAV-500",
+                "fields": {
+                    "summary": "An epic",
+                    "status": {"name": "Open"},
+                    "issuetype": {"name": "Epic"},
+                },
+            },
+        }])
+        output = nhse_jira.format_issue(issue)
+        assert "[E]" in output
+        assert "MAV-500" in output
+
+    def test_no_links_section_when_empty(self):
+        issue = self._make_issue([])
+        output = nhse_jira.format_issue(issue)
+        assert "Links" not in output
+
+    def test_no_links_section_when_absent(self):
+        issue = self._make_issue([])
+        del issue["fields"]["issuelinks"]
+        output = nhse_jira.format_issue(issue)
+        assert "Links" not in output
+
+
 class TestFormatChecklist:
     SAMPLE_CHECKLIST = [
         'Checklist(id=1, issueId=2, _items=['
