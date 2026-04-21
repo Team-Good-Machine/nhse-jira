@@ -5,6 +5,7 @@
 # ///
 
 import getpass
+import os
 import re
 import sys
 import netrc as netrc_mod
@@ -88,15 +89,29 @@ def resolve_fields(field_names, custom_fields):
     return result
 
 
-BOLD = "\033[1m"
-RESET = "\033[0m"
-CYAN = "\033[36m"
-GREEN = "\033[32m"
-YELLOW = "\033[33m"
-RED = "\033[31m"
-BLUE = "\033[34m"
-MAGENTA = "\033[35m"
-ISSUE_TYPE_COLORS = {"Story": GREEN, "Bug": RED, "Task": BLUE}
+def _should_use_color():
+    return sys.stdout.isatty() and "NO_COLOR" not in os.environ
+
+
+def _init_colors(use_color=None):
+    global BOLD, RESET, CYAN, GREEN, YELLOW, RED, BLUE, MAGENTA, ISSUE_TYPE_COLORS
+    if use_color is None:
+        use_color = _should_use_color()
+    if use_color:
+        BOLD = "\033[1m"
+        RESET = "\033[0m"
+        CYAN = "\033[36m"
+        GREEN = "\033[32m"
+        YELLOW = "\033[33m"
+        RED = "\033[31m"
+        BLUE = "\033[34m"
+        MAGENTA = "\033[35m"
+    else:
+        BOLD = RESET = CYAN = GREEN = YELLOW = RED = BLUE = MAGENTA = ""
+    ISSUE_TYPE_COLORS = {"Story": GREEN, "Bug": RED, "Task": BLUE}
+
+
+_init_colors()
 
 
 def _format_custom_value(raw, fmt):
