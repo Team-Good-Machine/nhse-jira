@@ -78,6 +78,13 @@ Config is saved to `~/.config/nhse-jira/config.yml` and the token to `~/.netrc`.
 ./nhse-jira releases --unreleased
 ```
 
+### Edit an issue
+
+```
+./nhse-jira edit MAV-5902 --title "New title"
+./nhse-jira edit 5902 --title "New title"      # uses default project
+```
+
 ### List issues in a release
 
 ```

@@ -308,6 +308,50 @@ class TestMainJiraErrorHandling:
         assert "Traceback" not in err
 
 
+class TestCmdEdit:
+    def test_updates_summary_via_put(self, capsys):
+        session = MagicMock()
+        session.put.return_value.ok = True
+        session.put.return_value.status_code = 204
+        session.put.return_value.content = b""
+
+        nhse_jira.cmd_edit(session, "https://jira.example.com", "MAV-5902", summary="New title")
+
+        session.put.assert_called_once()
+        call_args = session.put.call_args
+        assert "issue/MAV-5902" in call_args[0][0]
+        assert call_args[1]["json"] == {"fields": {"summary": "New title"}}
+
+        output = capsys.readouterr().out
+        assert "MAV-5902" in output
+
+    def test_no_fields_prints_error(self, capsys):
+        session = MagicMock()
+
+        with pytest.raises(SystemExit):
+            nhse_jira.cmd_edit(session, "https://jira.example.com", "MAV-5902")
+
+        output = capsys.readouterr().err
+        assert "Nothing to update" in output
+
+
+class TestParserEdit:
+    def test_edit_title_flag(self):
+        parser = nhse_jira.build_parser()
+        args = parser.parse_args(["edit", "MAV-5902", "--title", "New title"])
+        assert args.issue == "MAV-5902"
+        assert args.title == "New title"
+
+    def test_edit_help_has_examples(self, capsys):
+        parser = nhse_jira.build_parser()
+        try:
+            parser.parse_args(["edit", "--help"])
+        except SystemExit:
+            pass
+        output = capsys.readouterr().out
+        assert "nhse-jira edit" in output
+
+
 class TestCmdViewCustomFields:
     def test_passes_custom_fields_to_format(self, capsys):
         issue = {
