@@ -69,6 +69,19 @@ class TestResolveFields:
         result = nhse_jira.resolve_fields(None, self.SAMPLE_CUSTOM_FIELDS)
         assert result == []
 
+    def test_resolves_epic_link_when_epic_field_configured(self):
+        result = nhse_jira.resolve_fields(
+            ["epic link"], self.SAMPLE_CUSTOM_FIELDS, epic_field="customfield_10005"
+        )
+        assert result == [("Epic Link", "customfield_10005", "string")]
+
+    def test_epic_link_unknown_when_no_epic_field_configured(self):
+        import pytest
+        with pytest.raises(SystemExit, match="Unknown field"):
+            nhse_jira.resolve_fields(
+                ["epic link"], self.SAMPLE_CUSTOM_FIELDS
+            )
+
 
 class TestParserFields:
     def test_list_fields_flag(self):

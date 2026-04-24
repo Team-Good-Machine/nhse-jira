@@ -426,6 +426,40 @@ class TestFormatIssueTable:
         output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
         assert "Unassigned" in output
 
+    def test_extra_fields_epic_link(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "Done"},
+                        "customfield_10005": "MAV-3157",
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Epic Link", "customfield_10005", "string")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "MAV-3157" in output
+
+    def test_extra_fields_epic_link_null(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "Done"},
+                        "customfield_10005": None,
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Epic Link", "customfield_10005", "string")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "None" in output
+
     def test_extra_fields_default_unchanged(self):
         """Existing behaviour: no extra_fields still works."""
         data = {

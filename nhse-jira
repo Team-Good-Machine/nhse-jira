@@ -71,11 +71,13 @@ STANDARD_FIELDS = {
 }
 
 
-def resolve_fields(field_names, custom_fields):
+def resolve_fields(field_names, custom_fields, epic_field=None):
     if not field_names:
         return []
     # Build lookup from standard fields + custom fields (metadata + sections)
     lookup = dict(STANDARD_FIELDS)
+    if epic_field:
+        lookup["epic link"] = ("Epic Link", epic_field, "string")
     for section in ("metadata", "sections"):
         for label, cfg in custom_fields.get(section, {}).items():
             lookup[label.lower()] = (label, cfg["field"], cfg.get("format", "string"))
@@ -305,6 +307,23 @@ def api_post(session, base_url, path, json=None):
         return resp.json()
 
 
+def api_put(session, base_url, path, json=None):
+    resp = session.put(f"{base_url}/rest/api/2/{path}", json=json)
+    if not resp.ok:
+        _handle_error(resp)
+
+
+def cmd_edit(session, base_url, issue_key, summary=None):
+    fields = {}
+    if summary is not None:
+        fields["summary"] = summary
+    if not fields:
+        print("Error: Nothing to update", file=sys.stderr)
+        raise SystemExit(1)
+    api_put(session, base_url, f"issue/{issue_key}", json={"fields": fields})
+    print(f"Updated {issue_key}")
+
+
 def cmd_view(session, base_url, issue_key, custom_fields=None, epic_field=None):
     data = api_get(session, base_url, f"issue/{issue_key}")
     epic_name = None
@@ -532,6 +551,14 @@ def build_parser():
                "  nhse-jira releases --unreleased  only unreleased")
     releases_parser.add_argument("--unreleased", action="store_true", help="Only unreleased versions")
 
+    edit_parser = subparsers.add_parser("edit", help="Edit issue fields",
+        formatter_class=FMT,
+        epilog="examples:\n"
+               "  nhse-jira edit MAV-5902 --title \"New title\"\n"
+               "  nhse-jira edit 5902 --title \"New title\"      uses default project")
+    edit_parser.add_argument("issue", help="Issue key or number")
+    edit_parser.add_argument("--title", default=None, help="New summary/title for the issue")
+
     return parser
 
 
@@ -554,16 +581,19 @@ def main():
             issue_key = normalize_key(args.issue, project)
             cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"), epic_field=config.get("epic_field"))
         elif args.command == "list":
-            extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}))
+            extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}), epic_field=config.get("epic_field"))
             cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit, extra_fields=extra or None)
         elif args.command == "transition":
             issue_key = normalize_key(args.issue, project)
             cmd_transition(session, base_url, issue_key, args.status)
         elif args.command == "release":
-            extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}))
+            extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}), epic_field=config.get("epic_field"))
             cmd_release(session, base_url, project, args.version, extra_fields=extra or None)
         elif args.command == "releases":
             cmd_releases(session, base_url, project, unreleased=args.unreleased)
+        elif args.command == "edit":
+            issue_key = normalize_key(args.issue, project)
+            cmd_edit(session, base_url, issue_key, summary=args.title)
     except JiraError as e:
         print(f"Error: {e}", file=sys.stderr)
         raise SystemExit(1)
