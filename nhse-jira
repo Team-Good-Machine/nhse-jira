@@ -13,6 +13,7 @@ import netrc as netrc_mod
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import Any, NotRequired, TypedDict, cast
 from urllib.parse import urlparse
 
 import requests
@@ -23,12 +24,29 @@ DEFAULT_CONFIG_PATH = Path.home() / ".config" / "nhse-jira" / "config.yml"
 DEFAULT_NETRC_PATH = Path.home() / ".netrc"
 
 
-def load_config(config_path: Path | str = DEFAULT_CONFIG_PATH) -> dict:
+class FieldConfig(TypedDict):
+    field: str
+    format: NotRequired[str]
+
+
+class CustomFieldsConfig(TypedDict, total=False):
+    metadata: dict[str, FieldConfig]
+    sections: dict[str, FieldConfig]
+
+
+class Config(TypedDict):
+    server: str
+    project: str
+    epic_field: NotRequired[str]
+    custom_fields: NotRequired[CustomFieldsConfig]
+
+
+def load_config(config_path: Path | str = DEFAULT_CONFIG_PATH) -> Config:
     config_path = Path(config_path)
     if not config_path.exists():
         print(f"Error: Config file not found: {config_path}", file=sys.stderr)
         raise SystemExit(f"Config file not found: {config_path}")
-    return yaml.safe_load(config_path.read_text())
+    return cast(Config, yaml.safe_load(config_path.read_text()))
 
 
 def load_token(server_url: str, netrc_path: Path | str = DEFAULT_NETRC_PATH) -> str:
@@ -80,7 +98,7 @@ STANDARD_FIELDS: dict[str, FieldSpec] = {
 
 def resolve_fields(
     field_names: list[str] | None,
-    custom_fields: dict,
+    custom_fields: CustomFieldsConfig,
     epic_field: str | None = None,
 ) -> list[FieldSpec]:
     if not field_names:
@@ -89,9 +107,10 @@ def resolve_fields(
     lookup: dict[str, FieldSpec] = dict(STANDARD_FIELDS)
     if epic_field:
         lookup["epic link"] = ("Epic Link", epic_field, "string")
-    for section in ("metadata", "sections"):
-        for label, cfg in custom_fields.get(section, {}).items():
-            lookup[label.lower()] = (label, cfg["field"], cfg.get("format", "string"))
+    for section_dict in (custom_fields.get("metadata"), custom_fields.get("sections")):
+        if section_dict:
+            for label, cfg in section_dict.items():
+                lookup[label.lower()] = (label, cfg["field"], cfg.get("format", "string"))
     result: list[FieldSpec] = []
     for name in field_names:
         key = name.strip().lower()
@@ -164,17 +183,17 @@ _NULL_DISPLAY: dict[str, str] = {
 }
 
 
-def _format_custom_value(raw, fmt: str) -> str:
+def _format_custom_value(raw: Any, fmt: str) -> str:
     if raw is None:
         return _NULL_DISPLAY.get(fmt, "None")
     if isinstance(raw, dict) and fmt in _DICT_KEY:
-        return raw.get(_DICT_KEY[fmt], str(raw))
+        return str(raw.get(_DICT_KEY[fmt], str(raw)))
     return str(raw)
 
 
 def format_issue(
-    issue: dict,
-    custom_fields: dict | None = None,
+    issue: dict[str, Any],
+    custom_fields: CustomFieldsConfig | None = None,
     epic_field: str | None = None,
     epic_name: str | None = None,
     colors: Colors = C,
@@ -261,7 +280,7 @@ def format_issue(
     return "\n".join(lines)
 
 
-def _format_checklist(raw, colors: Colors = C) -> str:
+def _format_checklist(raw: Any, colors: Colors = C) -> str:
     if not raw:
         return "No items"
     items: list[str] = []
@@ -280,7 +299,7 @@ def _format_checklist(raw, colors: Colors = C) -> str:
 
 
 def format_issue_table(
-    data: dict,
+    data: dict[str, Any],
     extra_fields: list[FieldSpec] | None = None,
     colors: Colors = C,
 ) -> str:
@@ -316,7 +335,7 @@ def format_issue_table(
     return "\n".join(lines)
 
 
-def format_release(data: dict, colors: Colors = C) -> str:
+def format_release(data: dict[str, Any], colors: Colors = C) -> str:
     issues = data["issues"]
     if not issues:
         return "No issues found"
@@ -357,8 +376,8 @@ def api_get(
     session: requests.Session,
     base_url: str,
     path: str,
-    params: dict | None = None,
-):
+    params: dict[str, Any] | None = None,
+) -> Any:
     resp = session.get(f"{base_url}/rest/api/2/{path}", params=params)
     if not resp.ok:
         _handle_error(resp)
@@ -369,20 +388,21 @@ def api_post(
     session: requests.Session,
     base_url: str,
     path: str,
-    json: dict | None = None,
-):
+    json: dict[str, Any] | None = None,
+) -> Any:
     resp = session.post(f"{base_url}/rest/api/2/{path}", json=json)
     if not resp.ok:
         _handle_error(resp)
     if resp.content:
         return resp.json()
+    return None
 
 
 def api_put(
     session: requests.Session,
     base_url: str,
     path: str,
-    json: dict | None = None,
+    json: dict[str, Any] | None = None,
 ) -> None:
     resp = session.put(f"{base_url}/rest/api/2/{path}", json=json)
     if not resp.ok:
@@ -395,7 +415,7 @@ def cmd_edit(
     issue_key: str,
     summary: str | None = None,
 ) -> None:
-    fields: dict = {}
+    fields: dict[str, Any] = {}
     if summary is not None:
         fields["summary"] = summary
     if not fields:
@@ -409,7 +429,7 @@ def cmd_view(
     session: requests.Session,
     base_url: str,
     issue_key: str,
-    custom_fields: dict | None = None,
+    custom_fields: CustomFieldsConfig | None = None,
     epic_field: str | None = None,
 ) -> None:
     data = api_get(session, base_url, f"issue/{issue_key}")
@@ -572,7 +592,7 @@ def cmd_init(config_dir: Path | str | None = None, netrc_path: Path | str | None
 
     # Write config
     config_dir.mkdir(parents=True, exist_ok=True)
-    config: dict = {"server": server, "project": project}
+    config: dict[str, Any] = {"server": server, "project": project}
     if project.upper() == "MAV":
         config["epic_field"] = "customfield_10005"
         config["custom_fields"] = {
