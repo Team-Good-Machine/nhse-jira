@@ -65,24 +65,30 @@ def normalize_jql(jql: str, default_project: str) -> str:
     return jql
 
 
-STANDARD_FIELDS = {
+type FieldSpec = tuple[str, str, str]  # (label, field_id, format)
+
+STANDARD_FIELDS: dict[str, FieldSpec] = {
     "assignee": ("Assignee", "assignee", "user"),
     "reporter": ("Reporter", "reporter", "user"),
     "resolution": ("Resolution", "resolution", "resolution"),
 }
 
 
-def resolve_fields(field_names, custom_fields, epic_field=None):
+def resolve_fields(
+    field_names: list[str] | None,
+    custom_fields: dict,
+    epic_field: str | None = None,
+) -> list[FieldSpec]:
     if not field_names:
         return []
     # Build lookup from standard fields + custom fields (metadata + sections)
-    lookup = dict(STANDARD_FIELDS)
+    lookup: dict[str, FieldSpec] = dict(STANDARD_FIELDS)
     if epic_field:
         lookup["epic link"] = ("Epic Link", epic_field, "string")
     for section in ("metadata", "sections"):
         for label, cfg in custom_fields.get(section, {}).items():
             lookup[label.lower()] = (label, cfg["field"], cfg.get("format", "string"))
-    result = []
+    result: list[FieldSpec] = []
     for name in field_names:
         key = name.strip().lower()
         if key not in lookup:
