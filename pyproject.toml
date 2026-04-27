@@ -4,7 +4,26 @@ version = "0.1.0"
 requires-python = ">=3.12"
 
 [dependency-groups]
-dev = ["pytest", "requests", "pyyaml"]
+dev = ["pytest", "requests", "pyyaml", "ruff"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade — flag old typing/syntax patterns
+    "ANN",  # flake8-annotations — enforce type hints
+]
+ignore = [
+    "E501",   # line too long — defer until we have a formatter pass
+    "ANN401", # dynamically-typed Any — fine in places like resp.json()
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]  # tests don't need annotations
