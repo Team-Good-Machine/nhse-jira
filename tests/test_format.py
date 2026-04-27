@@ -477,6 +477,41 @@ class TestFormatIssueTable:
         output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
         assert "None" in output
 
+    def test_extra_fields_resolution(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "In Progress"},
+                        "resolution": {"name": "Won't Do"},
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Resolution", "resolution", "resolution")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "Won't Do" in output
+        assert "{'name'" not in output
+
+    def test_extra_fields_resolution_null(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "New"},
+                        "resolution": None,
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Resolution", "resolution", "resolution")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "Unresolved" in output
+
     def test_extra_fields_default_unchanged(self):
         """Existing behaviour: no extra_fields still works."""
         data = {

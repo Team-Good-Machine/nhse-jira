@@ -49,6 +49,10 @@ class TestResolveFields:
         result = nhse_jira.resolve_fields(["assignee"], self.SAMPLE_CUSTOM_FIELDS)
         assert result == [("Assignee", "assignee", "user")]
 
+    def test_resolves_standard_field_resolution(self):
+        result = nhse_jira.resolve_fields(["resolution"], self.SAMPLE_CUSTOM_FIELDS)
+        assert result == [("Resolution", "resolution", "resolution")]
+
     def test_resolves_mix_of_standard_and_custom(self):
         result = nhse_jira.resolve_fields(
             ["assignee", "clinical safety"], self.SAMPLE_CUSTOM_FIELDS

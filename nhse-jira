@@ -68,6 +68,7 @@ def normalize_jql(jql, default_project):
 STANDARD_FIELDS = {
     "assignee": ("Assignee", "assignee", "user"),
     "reporter": ("Reporter", "reporter", "user"),
+    "resolution": ("Resolution", "resolution", "resolution"),
 }
 
 
@@ -118,11 +119,17 @@ _init_colors()
 
 def _format_custom_value(raw, fmt):
     if raw is None:
-        return "Unassigned" if fmt == "user" else "None"
+        if fmt == "user":
+            return "Unassigned"
+        if fmt == "resolution":
+            return "Unresolved"
+        return "None"
     if fmt == "option":
         return raw.get("value", str(raw)) if isinstance(raw, dict) else str(raw)
     if fmt == "user":
         return raw.get("displayName", str(raw)) if isinstance(raw, dict) else str(raw)
+    if fmt == "resolution":
+        return raw.get("name", str(raw)) if isinstance(raw, dict) else str(raw)
     return str(raw)
 
 
