@@ -137,10 +137,13 @@ def format_issue(issue, custom_fields=None, epic_field=None, epic_name=None):
     description = fields.get("description") or "No description"
     fix_versions = fields.get("fixVersions", [])
     fix_version_str = ", ".join(v["name"] for v in fix_versions) if fix_versions else "None"
+    resolution = fields.get("resolution")
+    resolution_str = resolution["name"] if resolution else "Unresolved"
 
     lines = [
         f"{BOLD}{key}: {summary}{RESET}",
         f"{CYAN}Status:{RESET}      {status}",
+        f"{CYAN}Resolution:{RESET}  {resolution_str}",
         f"{CYAN}Assignee:{RESET}    {assignee_name}",
         f"{CYAN}Reporter:{RESET}    {reporter}",
         f"{CYAN}Fix Version:{RESET} {fix_version_str}",

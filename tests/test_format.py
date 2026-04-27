@@ -28,6 +28,23 @@ class TestFormatIssue:
         assert "Alice" in output
         assert "Bob" in output
 
+    def test_shows_resolution_when_set(self):
+        issue = self._make_issue(resolution={"name": "Done"})
+        output = nhse_jira.format_issue(issue)
+        assert "Resolution" in output
+        assert "Done" in output
+
+    def test_shows_unresolved_when_resolution_null(self):
+        issue = self._make_issue(resolution=None)
+        output = nhse_jira.format_issue(issue)
+        assert "Resolution" in output
+        assert "Unresolved" in output
+
+    def test_shows_unresolved_when_resolution_field_absent(self):
+        output = nhse_jira.format_issue(self._make_issue())
+        assert "Resolution" in output
+        assert "Unresolved" in output
+
     def test_includes_description(self):
         output = nhse_jira.format_issue(self._make_issue())
         assert "The login page is broken" in output
