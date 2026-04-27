@@ -53,13 +53,13 @@ def load_token(server_url, netrc_path=DEFAULT_NETRC_PATH):
     return auth[2]
 
 
-def normalize_key(key, default_project):
+def normalize_key(key: str, default_project: str) -> str:
     if key.isdigit():
         return f"{default_project}-{key}"
     return key.upper()
 
 
-def normalize_jql(jql, default_project):
+def normalize_jql(jql: str, default_project: str) -> str:
     if not re.search(r"\bproject\s*=", jql, re.IGNORECASE):
         return f"project = {default_project} AND {jql}"
     return jql
@@ -345,8 +345,8 @@ def cmd_view(session, base_url, issue_key, custom_fields=None, epic_field=None):
     print(format_issue(data, custom_fields=custom_fields, epic_field=epic_field, epic_name=epic_name))
 
 
-def build_list_jql(jql="", mine=False, status=None):
-    parts = []
+def build_list_jql(jql: str = "", mine: bool = False, status: str | None = None) -> str:
+    parts: list[str] = []
     if mine:
         parts.append("assignee = currentUser()")
     if status:
