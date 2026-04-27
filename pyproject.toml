@@ -4,10 +4,22 @@ version = "0.1.0"
 requires-python = ">=3.12"
 
 [dependency-groups]
-dev = ["pytest", "requests", "pyyaml", "ruff"]
+dev = [
+    "pytest",
+    "requests",
+    "pyyaml",
+    "ruff",
+    "mypy>=1.20.2",
+    "types-requests>=2.33.0.20260408",
+    "types-pyyaml>=6.0.12.20260408",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["nhse-jira"]
 
 [tool.ruff]
 target-version = "py312"
