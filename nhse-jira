@@ -20,7 +20,7 @@ DEFAULT_CONFIG_PATH = Path.home() / ".config" / "nhse-jira" / "config.yml"
 DEFAULT_NETRC_PATH = Path.home() / ".netrc"
 
 
-def load_config(config_path=DEFAULT_CONFIG_PATH):
+def load_config(config_path: Path | str = DEFAULT_CONFIG_PATH) -> dict:
     config_path = Path(config_path)
     if not config_path.exists():
         print(f"Error: Config file not found: {config_path}", file=sys.stderr)
@@ -29,7 +29,7 @@ def load_config(config_path=DEFAULT_CONFIG_PATH):
         return yaml.safe_load(f)
 
 
-def load_token(server_url, netrc_path=DEFAULT_NETRC_PATH):
+def load_token(server_url: str, netrc_path: Path | str = DEFAULT_NETRC_PATH) -> str:
     hostname = urlparse(server_url).hostname
     try:
         nrc = netrc_mod.netrc(str(netrc_path))
