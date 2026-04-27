@@ -16,5 +16,7 @@ jobs:
           python-version: "3.12"
       - name: Lint
         run: uv run ruff check .
+      - name: Type check
+        run: uv run mypy
       - name: Run tests
         run: uv run pytest tests/

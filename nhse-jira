@@ -33,6 +33,8 @@ def load_config(config_path: Path | str = DEFAULT_CONFIG_PATH) -> dict:
 
 def load_token(server_url: str, netrc_path: Path | str = DEFAULT_NETRC_PATH) -> str:
     hostname = urlparse(server_url).hostname
+    if hostname is None:
+        raise SystemExit(f"Invalid server URL (no hostname): {server_url}")
     try:
         nrc = netrc_mod.netrc(str(netrc_path))
     except FileNotFoundError:
@@ -559,6 +561,8 @@ def cmd_init(config_dir: Path | str | None = None, netrc_path: Path | str | None
 
     server = input(f"Jira server URL [{DEFAULT_SERVER}]: ").strip() or DEFAULT_SERVER
     hostname = urlparse(server).hostname
+    if hostname is None:
+        raise SystemExit(f"Invalid server URL (no hostname): {server}")
 
     pat_url = f"{server}/secure/ViewProfile.jspa?selectedTab=com.atlassian.pats.pats-plugin:jira-user-personal-access-tokens"
     print(f"\nCreate a Personal Access Token at:\n  {pat_url}\n")
