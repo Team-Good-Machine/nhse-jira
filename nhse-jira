@@ -20,7 +20,7 @@ DEFAULT_CONFIG_PATH = Path.home() / ".config" / "nhse-jira" / "config.yml"
 DEFAULT_NETRC_PATH = Path.home() / ".netrc"
 
 
-def load_config(config_path=DEFAULT_CONFIG_PATH):
+def load_config(config_path: Path | str = DEFAULT_CONFIG_PATH) -> dict:
     config_path = Path(config_path)
     if not config_path.exists():
         print(f"Error: Config file not found: {config_path}", file=sys.stderr)
@@ -29,7 +29,7 @@ def load_config(config_path=DEFAULT_CONFIG_PATH):
         return yaml.safe_load(f)
 
 
-def load_token(server_url, netrc_path=DEFAULT_NETRC_PATH):
+def load_token(server_url: str, netrc_path: Path | str = DEFAULT_NETRC_PATH) -> str:
     hostname = urlparse(server_url).hostname
     try:
         nrc = netrc_mod.netrc(str(netrc_path))
@@ -53,36 +53,42 @@ def load_token(server_url, netrc_path=DEFAULT_NETRC_PATH):
     return auth[2]
 
 
-def normalize_key(key, default_project):
+def normalize_key(key: str, default_project: str) -> str:
     if key.isdigit():
         return f"{default_project}-{key}"
     return key.upper()
 
 
-def normalize_jql(jql, default_project):
+def normalize_jql(jql: str, default_project: str) -> str:
     if not re.search(r"\bproject\s*=", jql, re.IGNORECASE):
         return f"project = {default_project} AND {jql}"
     return jql
 
 
-STANDARD_FIELDS = {
+type FieldSpec = tuple[str, str, str]  # (label, field_id, format)
+
+STANDARD_FIELDS: dict[str, FieldSpec] = {
     "assignee": ("Assignee", "assignee", "user"),
     "reporter": ("Reporter", "reporter", "user"),
     "resolution": ("Resolution", "resolution", "resolution"),
 }
 
 
-def resolve_fields(field_names, custom_fields, epic_field=None):
+def resolve_fields(
+    field_names: list[str] | None,
+    custom_fields: dict,
+    epic_field: str | None = None,
+) -> list[FieldSpec]:
     if not field_names:
         return []
     # Build lookup from standard fields + custom fields (metadata + sections)
-    lookup = dict(STANDARD_FIELDS)
+    lookup: dict[str, FieldSpec] = dict(STANDARD_FIELDS)
     if epic_field:
         lookup["epic link"] = ("Epic Link", epic_field, "string")
     for section in ("metadata", "sections"):
         for label, cfg in custom_fields.get(section, {}).items():
             lookup[label.lower()] = (label, cfg["field"], cfg.get("format", "string"))
-    result = []
+    result: list[FieldSpec] = []
     for name in field_names:
         key = name.strip().lower()
         if key not in lookup:
@@ -92,11 +98,11 @@ def resolve_fields(field_names, custom_fields, epic_field=None):
     return result
 
 
-def _should_use_color():
+def _should_use_color() -> bool:
     return sys.stdout.isatty() and "NO_COLOR" not in os.environ
 
 
-def _init_colors(use_color=None):
+def _init_colors(use_color: bool | None = None) -> None:
     global BOLD, RESET, CYAN, GREEN, YELLOW, RED, BLUE, MAGENTA, ISSUE_TYPE_COLORS
     if use_color is None:
         use_color = _should_use_color()
@@ -117,7 +123,7 @@ def _init_colors(use_color=None):
 _init_colors()
 
 
-def _format_custom_value(raw, fmt):
+def _format_custom_value(raw, fmt: str) -> str:
     if raw is None:
         if fmt == "user":
             return "Unassigned"
@@ -133,7 +139,12 @@ def _format_custom_value(raw, fmt):
     return str(raw)
 
 
-def format_issue(issue, custom_fields=None, epic_field=None, epic_name=None):
+def format_issue(
+    issue: dict,
+    custom_fields: dict | None = None,
+    epic_field: str | None = None,
+    epic_name: str | None = None,
+) -> str:
     key = issue["key"]
     fields = issue["fields"]
     summary = fields["summary"]
@@ -217,10 +228,10 @@ def format_issue(issue, custom_fields=None, epic_field=None, epic_name=None):
     return "\n".join(lines)
 
 
-def _format_checklist(raw):
+def _format_checklist(raw) -> str:
     if not raw:
         return "No items"
-    items = []
+    items: list[str] = []
     for entry in raw:
         matches = re.findall(
             r"value=(.*?), rank=\d+, status=Status\([^)]*name=(\w[\w ]*)",
@@ -235,7 +246,7 @@ def _format_checklist(raw):
     return "\n".join(items) if items else "No items"
 
 
-def format_issue_table(data, extra_fields=None):
+def format_issue_table(data: dict, extra_fields: list[FieldSpec] | None = None) -> str:
     issues = data["issues"]
     if not issues:
         return "No issues found"
@@ -268,7 +279,7 @@ def format_issue_table(data, extra_fields=None):
     return "\n".join(lines)
 
 
-def format_release(data):
+def format_release(data: dict) -> str:
     issues = data["issues"]
     if not issues:
         return "No issues found"
@@ -284,7 +295,7 @@ class JiraError(Exception):
     pass
 
 
-def create_session(token):
+def create_session(token: str) -> requests.Session:
     session = requests.Session()
     session.trust_env = False  # prevent requests from applying .netrc Basic auth
     session.headers["Authorization"] = f"Bearer {token}"
@@ -292,7 +303,7 @@ def create_session(token):
     return session
 
 
-def _handle_error(resp):
+def _handle_error(resp: requests.Response) -> None:
     try:
         body = resp.json()
         messages = body.get("errorMessages", [])
@@ -302,14 +313,24 @@ def _handle_error(resp):
     raise JiraError(f"HTTP {resp.status_code}: {msg}")
 
 
-def api_get(session, base_url, path, params=None):
+def api_get(
+    session: requests.Session,
+    base_url: str,
+    path: str,
+    params: dict | None = None,
+):
     resp = session.get(f"{base_url}/rest/api/2/{path}", params=params)
     if not resp.ok:
         _handle_error(resp)
     return resp.json()
 
 
-def api_post(session, base_url, path, json=None):
+def api_post(
+    session: requests.Session,
+    base_url: str,
+    path: str,
+    json: dict | None = None,
+):
     resp = session.post(f"{base_url}/rest/api/2/{path}", json=json)
     if not resp.ok:
         _handle_error(resp)
@@ -317,14 +338,24 @@ def api_post(session, base_url, path, json=None):
         return resp.json()
 
 
-def api_put(session, base_url, path, json=None):
+def api_put(
+    session: requests.Session,
+    base_url: str,
+    path: str,
+    json: dict | None = None,
+) -> None:
     resp = session.put(f"{base_url}/rest/api/2/{path}", json=json)
     if not resp.ok:
         _handle_error(resp)
 
 
-def cmd_edit(session, base_url, issue_key, summary=None):
-    fields = {}
+def cmd_edit(
+    session: requests.Session,
+    base_url: str,
+    issue_key: str,
+    summary: str | None = None,
+) -> None:
+    fields: dict = {}
     if summary is not None:
         fields["summary"] = summary
     if not fields:
@@ -334,7 +365,13 @@ def cmd_edit(session, base_url, issue_key, summary=None):
     print(f"Updated {issue_key}")
 
 
-def cmd_view(session, base_url, issue_key, custom_fields=None, epic_field=None):
+def cmd_view(
+    session: requests.Session,
+    base_url: str,
+    issue_key: str,
+    custom_fields: dict | None = None,
+    epic_field: str | None = None,
+) -> None:
     data = api_get(session, base_url, f"issue/{issue_key}")
     epic_name = None
     if epic_field:
@@ -345,8 +382,8 @@ def cmd_view(session, base_url, issue_key, custom_fields=None, epic_field=None):
     print(format_issue(data, custom_fields=custom_fields, epic_field=epic_field, epic_name=epic_name))
 
 
-def build_list_jql(jql="", mine=False, status=None):
-    parts = []
+def build_list_jql(jql: str = "", mine: bool = False, status: str | None = None) -> str:
+    parts: list[str] = []
     if mine:
         parts.append("assignee = currentUser()")
     if status:
@@ -358,7 +395,16 @@ def build_list_jql(jql="", mine=False, status=None):
     return " AND ".join(parts)
 
 
-def cmd_list(session, base_url, project, jql="", mine=False, status=None, limit=50, extra_fields=None):
+def cmd_list(
+    session: requests.Session,
+    base_url: str,
+    project: str,
+    jql: str = "",
+    mine: bool = False,
+    status: str | None = None,
+    limit: int = 50,
+    extra_fields: list[FieldSpec] | None = None,
+) -> None:
     query = build_list_jql(jql=jql, mine=mine, status=status)
     query = normalize_jql(query, project)
     api_fields = "summary,status"
@@ -371,7 +417,12 @@ def cmd_list(session, base_url, project, jql="", mine=False, status=None, limit=
     print(format_issue_table(data, extra_fields=extra_fields))
 
 
-def cmd_transition(session, base_url, issue_key, target_status=None):
+def cmd_transition(
+    session: requests.Session,
+    base_url: str,
+    issue_key: str,
+    target_status: str | None = None,
+) -> None:
     data = api_get(session, base_url, f"issue/{issue_key}/transitions")
     transitions = data["transitions"]
     available = [t["to"]["name"] for t in transitions]
@@ -400,7 +451,13 @@ def cmd_transition(session, base_url, issue_key, target_status=None):
     print(f"Transitioned {issue_key} to {target_status}")
 
 
-def cmd_release(session, base_url, project, version_name, extra_fields=None):
+def cmd_release(
+    session: requests.Session,
+    base_url: str,
+    project: str,
+    version_name: str,
+    extra_fields: list[FieldSpec] | None = None,
+) -> None:
     jql = f'project = {project} AND fixVersion = "{version_name}" ORDER BY key ASC'
     api_fields = "summary,status"
     if extra_fields:
@@ -415,7 +472,12 @@ def cmd_release(session, base_url, project, version_name, extra_fields=None):
         print(format_release(data))
 
 
-def cmd_releases(session, base_url, project, unreleased=False):
+def cmd_releases(
+    session: requests.Session,
+    base_url: str,
+    project: str,
+    unreleased: bool = False,
+) -> None:
     versions = api_get(session, base_url, f"project/{project}/versions")
     if unreleased:
         versions = [v for v in versions if not v.get("released", False)]
@@ -436,7 +498,7 @@ DEFAULT_SERVER = "https://nhsd-jira.digital.nhs.uk"
 DEFAULT_PROJECT = "MAV"
 
 
-def cmd_init(config_dir=None, netrc_path=None):
+def cmd_init(config_dir: Path | str | None = None, netrc_path: Path | str | None = None) -> None:
     if config_dir is None:
         config_dir = Path.home() / ".config" / "nhse-jira"
     config_dir = Path(config_dir)
@@ -508,7 +570,7 @@ def cmd_init(config_dir=None, netrc_path=None):
 import argparse
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="nhse-jira", description="CLI for NHSE Jira")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -572,7 +634,7 @@ def build_parser():
     return parser
 
 
-def main():
+def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
