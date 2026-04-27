@@ -123,7 +123,7 @@ def _init_colors(use_color: bool | None = None) -> None:
 _init_colors()
 
 
-def _format_custom_value(raw, fmt):
+def _format_custom_value(raw, fmt: str) -> str:
     if raw is None:
         if fmt == "user":
             return "Unassigned"
@@ -139,7 +139,12 @@ def _format_custom_value(raw, fmt):
     return str(raw)
 
 
-def format_issue(issue, custom_fields=None, epic_field=None, epic_name=None):
+def format_issue(
+    issue: dict,
+    custom_fields: dict | None = None,
+    epic_field: str | None = None,
+    epic_name: str | None = None,
+) -> str:
     key = issue["key"]
     fields = issue["fields"]
     summary = fields["summary"]
@@ -223,10 +228,10 @@ def format_issue(issue, custom_fields=None, epic_field=None, epic_name=None):
     return "\n".join(lines)
 
 
-def _format_checklist(raw):
+def _format_checklist(raw) -> str:
     if not raw:
         return "No items"
-    items = []
+    items: list[str] = []
     for entry in raw:
         matches = re.findall(
             r"value=(.*?), rank=\d+, status=Status\([^)]*name=(\w[\w ]*)",
@@ -241,7 +246,7 @@ def _format_checklist(raw):
     return "\n".join(items) if items else "No items"
 
 
-def format_issue_table(data, extra_fields=None):
+def format_issue_table(data: dict, extra_fields: list[FieldSpec] | None = None) -> str:
     issues = data["issues"]
     if not issues:
         return "No issues found"
@@ -274,7 +279,7 @@ def format_issue_table(data, extra_fields=None):
     return "\n".join(lines)
 
 
-def format_release(data):
+def format_release(data: dict) -> str:
     issues = data["issues"]
     if not issues:
         return "No issues found"
