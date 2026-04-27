@@ -349,8 +349,13 @@ def api_put(
         _handle_error(resp)
 
 
-def cmd_edit(session, base_url, issue_key, summary=None):
-    fields = {}
+def cmd_edit(
+    session: requests.Session,
+    base_url: str,
+    issue_key: str,
+    summary: str | None = None,
+) -> None:
+    fields: dict = {}
     if summary is not None:
         fields["summary"] = summary
     if not fields:
@@ -360,7 +365,13 @@ def cmd_edit(session, base_url, issue_key, summary=None):
     print(f"Updated {issue_key}")
 
 
-def cmd_view(session, base_url, issue_key, custom_fields=None, epic_field=None):
+def cmd_view(
+    session: requests.Session,
+    base_url: str,
+    issue_key: str,
+    custom_fields: dict | None = None,
+    epic_field: str | None = None,
+) -> None:
     data = api_get(session, base_url, f"issue/{issue_key}")
     epic_name = None
     if epic_field:
@@ -384,7 +395,16 @@ def build_list_jql(jql: str = "", mine: bool = False, status: str | None = None)
     return " AND ".join(parts)
 
 
-def cmd_list(session, base_url, project, jql="", mine=False, status=None, limit=50, extra_fields=None):
+def cmd_list(
+    session: requests.Session,
+    base_url: str,
+    project: str,
+    jql: str = "",
+    mine: bool = False,
+    status: str | None = None,
+    limit: int = 50,
+    extra_fields: list[FieldSpec] | None = None,
+) -> None:
     query = build_list_jql(jql=jql, mine=mine, status=status)
     query = normalize_jql(query, project)
     api_fields = "summary,status"
@@ -397,7 +417,12 @@ def cmd_list(session, base_url, project, jql="", mine=False, status=None, limit=
     print(format_issue_table(data, extra_fields=extra_fields))
 
 
-def cmd_transition(session, base_url, issue_key, target_status=None):
+def cmd_transition(
+    session: requests.Session,
+    base_url: str,
+    issue_key: str,
+    target_status: str | None = None,
+) -> None:
     data = api_get(session, base_url, f"issue/{issue_key}/transitions")
     transitions = data["transitions"]
     available = [t["to"]["name"] for t in transitions]
@@ -426,7 +451,13 @@ def cmd_transition(session, base_url, issue_key, target_status=None):
     print(f"Transitioned {issue_key} to {target_status}")
 
 
-def cmd_release(session, base_url, project, version_name, extra_fields=None):
+def cmd_release(
+    session: requests.Session,
+    base_url: str,
+    project: str,
+    version_name: str,
+    extra_fields: list[FieldSpec] | None = None,
+) -> None:
     jql = f'project = {project} AND fixVersion = "{version_name}" ORDER BY key ASC'
     api_fields = "summary,status"
     if extra_fields:
@@ -441,7 +472,12 @@ def cmd_release(session, base_url, project, version_name, extra_fields=None):
         print(format_release(data))
 
 
-def cmd_releases(session, base_url, project, unreleased=False):
+def cmd_releases(
+    session: requests.Session,
+    base_url: str,
+    project: str,
+    unreleased: bool = False,
+) -> None:
     versions = api_get(session, base_url, f"project/{project}/versions")
     if unreleased:
         versions = [v for v in versions if not v.get("released", False)]
@@ -462,7 +498,7 @@ DEFAULT_SERVER = "https://nhsd-jira.digital.nhs.uk"
 DEFAULT_PROJECT = "MAV"
 
 
-def cmd_init(config_dir=None, netrc_path=None):
+def cmd_init(config_dir: Path | str | None = None, netrc_path: Path | str | None = None) -> None:
     if config_dir is None:
         config_dir = Path.home() / ".config" / "nhse-jira"
     config_dir = Path(config_dir)
