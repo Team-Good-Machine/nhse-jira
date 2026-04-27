@@ -183,11 +183,11 @@ _NULL_DISPLAY: dict[str, str] = {
 }
 
 
-def _format_custom_value(raw, fmt: str) -> str:
+def _format_custom_value(raw: Any, fmt: str) -> str:
     if raw is None:
         return _NULL_DISPLAY.get(fmt, "None")
     if isinstance(raw, dict) and fmt in _DICT_KEY:
-        return raw.get(_DICT_KEY[fmt], str(raw))
+        return str(raw.get(_DICT_KEY[fmt], str(raw)))
     return str(raw)
 
 
@@ -280,7 +280,7 @@ def format_issue(
     return "\n".join(lines)
 
 
-def _format_checklist(raw, colors: Colors = C) -> str:
+def _format_checklist(raw: Any, colors: Colors = C) -> str:
     if not raw:
         return "No items"
     items: list[str] = []
@@ -299,7 +299,7 @@ def _format_checklist(raw, colors: Colors = C) -> str:
 
 
 def format_issue_table(
-    data: dict,
+    data: dict[str, Any],
     extra_fields: list[FieldSpec] | None = None,
     colors: Colors = C,
 ) -> str:
@@ -335,7 +335,7 @@ def format_issue_table(
     return "\n".join(lines)
 
 
-def format_release(data: dict, colors: Colors = C) -> str:
+def format_release(data: dict[str, Any], colors: Colors = C) -> str:
     issues = data["issues"]
     if not issues:
         return "No issues found"
@@ -376,8 +376,8 @@ def api_get(
     session: requests.Session,
     base_url: str,
     path: str,
-    params: dict | None = None,
-):
+    params: dict[str, Any] | None = None,
+) -> Any:
     resp = session.get(f"{base_url}/rest/api/2/{path}", params=params)
     if not resp.ok:
         _handle_error(resp)
@@ -388,20 +388,21 @@ def api_post(
     session: requests.Session,
     base_url: str,
     path: str,
-    json: dict | None = None,
-):
+    json: dict[str, Any] | None = None,
+) -> Any:
     resp = session.post(f"{base_url}/rest/api/2/{path}", json=json)
     if not resp.ok:
         _handle_error(resp)
     if resp.content:
         return resp.json()
+    return None
 
 
 def api_put(
     session: requests.Session,
     base_url: str,
     path: str,
-    json: dict | None = None,
+    json: dict[str, Any] | None = None,
 ) -> None:
     resp = session.put(f"{base_url}/rest/api/2/{path}", json=json)
     if not resp.ok:
@@ -414,7 +415,7 @@ def cmd_edit(
     issue_key: str,
     summary: str | None = None,
 ) -> None:
-    fields: dict = {}
+    fields: dict[str, Any] = {}
     if summary is not None:
         fields["summary"] = summary
     if not fields:
@@ -591,7 +592,7 @@ def cmd_init(config_dir: Path | str | None = None, netrc_path: Path | str | None
 
     # Write config
     config_dir.mkdir(parents=True, exist_ok=True)
-    config: dict = {"server": server, "project": project}
+    config: dict[str, Any] = {"server": server, "project": project}
     if project.upper() == "MAV":
         config["epic_field"] = "customfield_10005"
         config["custom_fields"] = {
