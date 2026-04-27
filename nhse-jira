@@ -689,23 +689,24 @@ def main() -> None:
     project = config["project"]
 
     try:
-        if args.command == "view":
-            issue_key = normalize_key(args.issue, project)
-            cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"), epic_field=config.get("epic_field"))
-        elif args.command == "list":
-            extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}), epic_field=config.get("epic_field"))
-            cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit, extra_fields=extra or None)
-        elif args.command == "transition":
-            issue_key = normalize_key(args.issue, project)
-            cmd_transition(session, base_url, issue_key, args.status)
-        elif args.command == "release":
-            extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}), epic_field=config.get("epic_field"))
-            cmd_release(session, base_url, project, args.version, extra_fields=extra or None)
-        elif args.command == "releases":
-            cmd_releases(session, base_url, project, unreleased=args.unreleased)
-        elif args.command == "edit":
-            issue_key = normalize_key(args.issue, project)
-            cmd_edit(session, base_url, issue_key, summary=args.title)
+        match args.command:
+            case "view":
+                issue_key = normalize_key(args.issue, project)
+                cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"), epic_field=config.get("epic_field"))
+            case "list":
+                extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}), epic_field=config.get("epic_field"))
+                cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit, extra_fields=extra or None)
+            case "transition":
+                issue_key = normalize_key(args.issue, project)
+                cmd_transition(session, base_url, issue_key, args.status)
+            case "release":
+                extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}), epic_field=config.get("epic_field"))
+                cmd_release(session, base_url, project, args.version, extra_fields=extra or None)
+            case "releases":
+                cmd_releases(session, base_url, project, unreleased=args.unreleased)
+            case "edit":
+                issue_key = normalize_key(args.issue, project)
+                cmd_edit(session, base_url, issue_key, summary=args.title)
     except JiraError as e:
         print(f"Error: {e}", file=sys.stderr)
         raise SystemExit(1)
