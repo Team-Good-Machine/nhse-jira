@@ -46,14 +46,13 @@ class TestColorInOutput:
         }
 
     def test_no_ansi_codes_when_color_disabled(self):
-        nhse_jira._init_colors(use_color=False)
-        try:
-            output = nhse_jira.format_issue_table(self._make_issue_table_data())
-            assert "\033[" not in output
-        finally:
-            nhse_jira._init_colors(use_color=True)
+        output = nhse_jira.format_issue_table(
+            self._make_issue_table_data(), colors=nhse_jira.Colors.disabled()
+        )
+        assert "\033[" not in output
 
     def test_ansi_codes_present_when_color_enabled(self):
-        nhse_jira._init_colors(use_color=True)
-        output = nhse_jira.format_issue_table(self._make_issue_table_data())
+        output = nhse_jira.format_issue_table(
+            self._make_issue_table_data(), colors=nhse_jira.Colors.enabled()
+        )
         assert "\033[" in output

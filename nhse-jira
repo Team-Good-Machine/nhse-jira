@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import netrc as netrc_mod
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -98,29 +99,45 @@ def resolve_fields(
     return result
 
 
+@dataclass(frozen=True)
+class Colors:
+    bold: str = ""
+    reset: str = ""
+    cyan: str = ""
+    green: str = ""
+    yellow: str = ""
+    red: str = ""
+    blue: str = ""
+    magenta: str = ""
+
+    @classmethod
+    def enabled(cls) -> "Colors":
+        return cls(
+            bold="\033[1m",
+            reset="\033[0m",
+            cyan="\033[36m",
+            green="\033[32m",
+            yellow="\033[33m",
+            red="\033[31m",
+            blue="\033[34m",
+            magenta="\033[35m",
+        )
+
+    @classmethod
+    def disabled(cls) -> "Colors":
+        return cls()
+
+    def issue_type(self, issue_type: str) -> str:
+        return {"Story": self.green, "Bug": self.red, "Task": self.blue}.get(
+            issue_type, self.magenta
+        )
+
+
 def _should_use_color() -> bool:
     return sys.stdout.isatty() and "NO_COLOR" not in os.environ
 
 
-def _init_colors(use_color: bool | None = None) -> None:
-    global BOLD, RESET, CYAN, GREEN, YELLOW, RED, BLUE, MAGENTA, ISSUE_TYPE_COLORS
-    if use_color is None:
-        use_color = _should_use_color()
-    if use_color:
-        BOLD = "\033[1m"
-        RESET = "\033[0m"
-        CYAN = "\033[36m"
-        GREEN = "\033[32m"
-        YELLOW = "\033[33m"
-        RED = "\033[31m"
-        BLUE = "\033[34m"
-        MAGENTA = "\033[35m"
-    else:
-        BOLD = RESET = CYAN = GREEN = YELLOW = RED = BLUE = MAGENTA = ""
-    ISSUE_TYPE_COLORS = {"Story": GREEN, "Bug": RED, "Task": BLUE}
-
-
-_init_colors()
+C: Colors = Colors.enabled() if _should_use_color() else Colors.disabled()
 
 
 def _format_custom_value(raw, fmt: str) -> str:
@@ -144,6 +161,7 @@ def format_issue(
     custom_fields: dict | None = None,
     epic_field: str | None = None,
     epic_name: str | None = None,
+    colors: Colors = C,
 ) -> str:
     key = issue["key"]
     fields = issue["fields"]
@@ -159,30 +177,30 @@ def format_issue(
     resolution_str = resolution["name"] if resolution else "Unresolved"
 
     lines = [
-        f"{BOLD}{key}: {summary}{RESET}",
-        f"{CYAN}Status:{RESET}      {status}",
-        f"{CYAN}Resolution:{RESET}  {resolution_str}",
-        f"{CYAN}Assignee:{RESET}    {assignee_name}",
-        f"{CYAN}Reporter:{RESET}    {reporter}",
-        f"{CYAN}Fix Version:{RESET} {fix_version_str}",
+        f"{colors.bold}{key}: {summary}{colors.reset}",
+        f"{colors.cyan}Status:{colors.reset}      {status}",
+        f"{colors.cyan}Resolution:{colors.reset}  {resolution_str}",
+        f"{colors.cyan}Assignee:{colors.reset}    {assignee_name}",
+        f"{colors.cyan}Reporter:{colors.reset}    {reporter}",
+        f"{colors.cyan}Fix Version:{colors.reset} {fix_version_str}",
     ]
 
     if epic_field:
         epic_key = fields.get(epic_field)
         if epic_key:
             epic_str = f"{epic_key} \u2014 {epic_name}" if epic_name else epic_key
-            lines.append(f"{CYAN}Epic:{RESET}        {epic_str}")
+            lines.append(f"{colors.cyan}Epic:{colors.reset}        {epic_str}")
 
     if custom_fields:
         for label, cfg in custom_fields.get("metadata", {}).items():
             raw = fields.get(cfg["field"])
             value = _format_custom_value(raw, cfg.get("format", "string"))
-            lines.append(f"{CYAN}{label}:{RESET} {value}")
+            lines.append(f"{colors.cyan}{label}:{colors.reset} {value}")
 
     issuelinks = fields.get("issuelinks", [])
     if issuelinks:
         lines.append("")
-        lines.append(f"{BOLD}Links:{RESET}")
+        lines.append(f"{colors.bold}Links:{colors.reset}")
         for link in issuelinks:
             if "outwardIssue" in link:
                 direction = link["type"]["outward"]
@@ -194,8 +212,7 @@ def format_issue(
             lsummary = linked["fields"]["summary"]
             lstatus = linked["fields"]["status"]["name"]
             ltype = linked["fields"]["issuetype"]["name"]
-            color = ISSUE_TYPE_COLORS.get(ltype, MAGENTA)
-            badge = f"{color}[{ltype[0].upper()}]{RESET}"
+            badge = f"{colors.issue_type(ltype)}[{ltype[0].upper()}]{colors.reset}"
             lines.append(f"  {direction} {badge} {lkey} ({lstatus}) {lsummary}")
 
     lines.append("")
@@ -205,11 +222,11 @@ def format_issue(
     if comments:
         last_3 = comments[-3:]
         lines.append("")
-        lines.append(f"{BOLD}Comments ({len(last_3)}):{RESET}")
+        lines.append(f"{colors.bold}Comments ({len(last_3)}):{colors.reset}")
         for comment in last_3:
             author = comment["author"]["displayName"]
             body = comment["body"]
-            lines.append(f"  {GREEN}{author}:{RESET} {body}")
+            lines.append(f"  {colors.green}{author}:{colors.reset} {body}")
 
     if custom_fields:
         for label, cfg in custom_fields.get("sections", {}).items():
@@ -218,17 +235,17 @@ def format_issue(
                 continue
             fmt = cfg.get("format", "string")
             if fmt == "checklist":
-                value = _format_checklist(raw)
+                value = _format_checklist(raw, colors=colors)
             else:
                 value = str(raw)
             lines.append("")
-            lines.append(f"{BOLD}{label}:{RESET}")
+            lines.append(f"{colors.bold}{label}:{colors.reset}")
             lines.append(value)
 
     return "\n".join(lines)
 
 
-def _format_checklist(raw) -> str:
+def _format_checklist(raw, colors: Colors = C) -> str:
     if not raw:
         return "No items"
     items: list[str] = []
@@ -239,14 +256,18 @@ def _format_checklist(raw) -> str:
         )
         for value, status in matches:
             if status == "DONE":
-                marker = f"{GREEN}[DONE]{RESET}"
+                marker = f"{colors.green}[DONE]{colors.reset}"
             else:
-                marker = f"{YELLOW}[{status}]{RESET}"
+                marker = f"{colors.yellow}[{status}]{colors.reset}"
             items.append(f"  {marker} {value}")
     return "\n".join(items) if items else "No items"
 
 
-def format_issue_table(data: dict, extra_fields: list[FieldSpec] | None = None) -> str:
+def format_issue_table(
+    data: dict,
+    extra_fields: list[FieldSpec] | None = None,
+    colors: Colors = C,
+) -> str:
     issues = data["issues"]
     if not issues:
         return "No issues found"
@@ -272,14 +293,14 @@ def format_issue_table(data: dict, extra_fields: list[FieldSpec] | None = None) 
 
     lines = []
     for key, summary, status, extras in rows:
-        line = f"{CYAN}{key:<{key_width}}{RESET}  {summary}  {YELLOW}{status:<{status_width}}{RESET}"
+        line = f"{colors.cyan}{key:<{key_width}}{colors.reset}  {summary}  {colors.yellow}{status:<{status_width}}{colors.reset}"
         for i, val in enumerate(extras):
             line += f"  {val:<{extra_widths[i]}}"
         lines.append(line)
     return "\n".join(lines)
 
 
-def format_release(data: dict) -> str:
+def format_release(data: dict, colors: Colors = C) -> str:
     issues = data["issues"]
     if not issues:
         return "No issues found"
@@ -287,7 +308,7 @@ def format_release(data: dict) -> str:
     for issue in issues:
         key = issue["key"]
         summary = issue["fields"]["summary"]
-        lines.append(f"{CYAN}[{key}]{RESET} {summary}")
+        lines.append(f"{colors.cyan}[{key}]{colors.reset} {summary}")
     return "\n".join(lines)
 
 
@@ -477,6 +498,7 @@ def cmd_releases(
     base_url: str,
     project: str,
     unreleased: bool = False,
+    colors: Colors = C,
 ) -> None:
     versions = api_get(session, base_url, f"project/{project}/versions")
     if unreleased:
@@ -488,9 +510,13 @@ def cmd_releases(
     lines = []
     for v in versions:
         name = v["name"]
-        status = f"{GREEN}Released{RESET}" if v.get("released") else f"{YELLOW}Unreleased{RESET}"
+        status = (
+            f"{colors.green}Released{colors.reset}"
+            if v.get("released")
+            else f"{colors.yellow}Unreleased{colors.reset}"
+        )
         date = v.get("releaseDate", "")
-        lines.append(f"{CYAN}{name:<{name_width}}{RESET}  {status}  {date}")
+        lines.append(f"{colors.cyan}{name:<{name_width}}{colors.reset}  {status}  {date}")
     print("\n".join(lines))
 
 
