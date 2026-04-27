@@ -4,6 +4,7 @@
 # dependencies = ["requests", "pyyaml"]
 # ///
 
+import argparse
 import getpass
 import os
 import re
@@ -27,8 +28,7 @@ def load_config(config_path: Path | str = DEFAULT_CONFIG_PATH) -> dict:
     if not config_path.exists():
         print(f"Error: Config file not found: {config_path}", file=sys.stderr)
         raise SystemExit(f"Config file not found: {config_path}")
-    with open(config_path) as f:
-        return yaml.safe_load(f)
+    return yaml.safe_load(config_path.read_text())
 
 
 def load_token(server_url: str, netrc_path: Path | str = DEFAULT_NETRC_PATH) -> str:
@@ -339,12 +339,15 @@ def create_session(token: str) -> requests.Session:
 
 
 def _handle_error(resp: requests.Response) -> None:
+    msg = resp.text
     try:
         body = resp.json()
-        messages = body.get("errorMessages", [])
-        msg = "; ".join(messages) if messages else resp.text
-    except Exception:
-        msg = resp.text
+    except requests.JSONDecodeError:
+        body = None
+    if isinstance(body, dict):
+        messages = body.get("errorMessages") or []
+        if messages:
+            msg = "; ".join(str(m) for m in messages)
     raise JiraError(f"HTTP {resp.status_code}: {msg}")
 
 
@@ -565,33 +568,22 @@ def cmd_init(config_dir: Path | str | None = None, netrc_path: Path | str | None
 
     # Write config
     config_dir.mkdir(parents=True, exist_ok=True)
-    config_content = f"server: {server}\nproject: {project}\n"
+    config: dict = {"server": server, "project": project}
     if project.upper() == "MAV":
-        config_content += "epic_field: customfield_10005\n"
-        config_content += (
-            "custom_fields:\n"
-            "  metadata:\n"
-            "    Clinical Severity:\n"
-            "      field: customfield_37401\n"
-            "      format: option\n"
-            "    Clinical Safety:\n"
-            "      field: customfield_10595\n"
-            "      format: option\n"
-            "    Checklist Progress:\n"
-            "      field: customfield_22907\n"
-            "      format: string\n"
-            "  sections:\n"
-            "    Clinical Summary:\n"
-            "      field: customfield_37408\n"
-            "      format: string\n"
-            "    Test Summary:\n"
-            "      field: customfield_37407\n"
-            "      format: string\n"
-            "    Smart Checklist:\n"
-            "      field: customfield_22905\n"
-            "      format: checklist\n"
-        )
-    config_file.write_text(config_content)
+        config["epic_field"] = "customfield_10005"
+        config["custom_fields"] = {
+            "metadata": {
+                "Clinical Severity": {"field": "customfield_37401", "format": "option"},
+                "Clinical Safety": {"field": "customfield_10595", "format": "option"},
+                "Checklist Progress": {"field": "customfield_22907", "format": "string"},
+            },
+            "sections": {
+                "Clinical Summary": {"field": "customfield_37408", "format": "string"},
+                "Test Summary": {"field": "customfield_37407", "format": "string"},
+                "Smart Checklist": {"field": "customfield_22905", "format": "checklist"},
+            },
+        }
+    config_file.write_text(yaml.safe_dump(config, sort_keys=False, default_flow_style=False))
 
     # Write netrc
     entry = f"machine {hostname} login _ password {token}\n"
@@ -605,9 +597,6 @@ def cmd_init(config_dir: Path | str | None = None, netrc_path: Path | str | None
 
     print(f"\nConfig written to {config_file}")
     print(f"Token saved to {netrc_path}")
-
-
-import argparse
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -709,7 +698,7 @@ def main() -> None:
                 cmd_edit(session, base_url, issue_key, summary=args.title)
     except JiraError as e:
         print(f"Error: {e}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
 
 if __name__ == "__main__":
