@@ -295,7 +295,7 @@ class JiraError(Exception):
     pass
 
 
-def create_session(token):
+def create_session(token: str) -> requests.Session:
     session = requests.Session()
     session.trust_env = False  # prevent requests from applying .netrc Basic auth
     session.headers["Authorization"] = f"Bearer {token}"
@@ -303,7 +303,7 @@ def create_session(token):
     return session
 
 
-def _handle_error(resp):
+def _handle_error(resp: requests.Response) -> None:
     try:
         body = resp.json()
         messages = body.get("errorMessages", [])
@@ -313,14 +313,24 @@ def _handle_error(resp):
     raise JiraError(f"HTTP {resp.status_code}: {msg}")
 
 
-def api_get(session, base_url, path, params=None):
+def api_get(
+    session: requests.Session,
+    base_url: str,
+    path: str,
+    params: dict | None = None,
+):
     resp = session.get(f"{base_url}/rest/api/2/{path}", params=params)
     if not resp.ok:
         _handle_error(resp)
     return resp.json()
 
 
-def api_post(session, base_url, path, json=None):
+def api_post(
+    session: requests.Session,
+    base_url: str,
+    path: str,
+    json: dict | None = None,
+):
     resp = session.post(f"{base_url}/rest/api/2/{path}", json=json)
     if not resp.ok:
         _handle_error(resp)
@@ -328,7 +338,12 @@ def api_post(session, base_url, path, json=None):
         return resp.json()
 
 
-def api_put(session, base_url, path, json=None):
+def api_put(
+    session: requests.Session,
+    base_url: str,
+    path: str,
+    json: dict | None = None,
+) -> None:
     resp = session.put(f"{base_url}/rest/api/2/{path}", json=json)
     if not resp.ok:
         _handle_error(resp)
