@@ -10,6 +10,7 @@ import re
 import sys
 import netrc as netrc_mod
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -140,19 +141,32 @@ def _should_use_color() -> bool:
 C: Colors = Colors.enabled() if _should_use_color() else Colors.disabled()
 
 
+class Format(StrEnum):
+    OPTION = "option"
+    USER = "user"
+    RESOLUTION = "resolution"
+    STRING = "string"
+    CHECKLIST = "checklist"
+
+
+# Dispatch tables for _format_custom_value. Adding a new format type means
+# adding entries here rather than new branches.
+_DICT_KEY: dict[str, str] = {
+    Format.OPTION: "value",
+    Format.USER: "displayName",
+    Format.RESOLUTION: "name",
+}
+_NULL_DISPLAY: dict[str, str] = {
+    Format.USER: "Unassigned",
+    Format.RESOLUTION: "Unresolved",
+}
+
+
 def _format_custom_value(raw, fmt: str) -> str:
     if raw is None:
-        if fmt == "user":
-            return "Unassigned"
-        if fmt == "resolution":
-            return "Unresolved"
-        return "None"
-    if fmt == "option":
-        return raw.get("value", str(raw)) if isinstance(raw, dict) else str(raw)
-    if fmt == "user":
-        return raw.get("displayName", str(raw)) if isinstance(raw, dict) else str(raw)
-    if fmt == "resolution":
-        return raw.get("name", str(raw)) if isinstance(raw, dict) else str(raw)
+        return _NULL_DISPLAY.get(fmt, "None")
+    if isinstance(raw, dict) and fmt in _DICT_KEY:
+        return raw.get(_DICT_KEY[fmt], str(raw))
     return str(raw)
 
 
@@ -675,23 +689,24 @@ def main() -> None:
     project = config["project"]
 
     try:
-        if args.command == "view":
-            issue_key = normalize_key(args.issue, project)
-            cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"), epic_field=config.get("epic_field"))
-        elif args.command == "list":
-            extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}), epic_field=config.get("epic_field"))
-            cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit, extra_fields=extra or None)
-        elif args.command == "transition":
-            issue_key = normalize_key(args.issue, project)
-            cmd_transition(session, base_url, issue_key, args.status)
-        elif args.command == "release":
-            extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}), epic_field=config.get("epic_field"))
-            cmd_release(session, base_url, project, args.version, extra_fields=extra or None)
-        elif args.command == "releases":
-            cmd_releases(session, base_url, project, unreleased=args.unreleased)
-        elif args.command == "edit":
-            issue_key = normalize_key(args.issue, project)
-            cmd_edit(session, base_url, issue_key, summary=args.title)
+        match args.command:
+            case "view":
+                issue_key = normalize_key(args.issue, project)
+                cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"), epic_field=config.get("epic_field"))
+            case "list":
+                extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}), epic_field=config.get("epic_field"))
+                cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit, extra_fields=extra or None)
+            case "transition":
+                issue_key = normalize_key(args.issue, project)
+                cmd_transition(session, base_url, issue_key, args.status)
+            case "release":
+                extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}), epic_field=config.get("epic_field"))
+                cmd_release(session, base_url, project, args.version, extra_fields=extra or None)
+            case "releases":
+                cmd_releases(session, base_url, project, unreleased=args.unreleased)
+            case "edit":
+                issue_key = normalize_key(args.issue, project)
+                cmd_edit(session, base_url, issue_key, summary=args.title)
     except JiraError as e:
         print(f"Error: {e}", file=sys.stderr)
         raise SystemExit(1)
