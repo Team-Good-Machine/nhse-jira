@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
-import pytest
+
 import nhse_jira
+import pytest
 
 
 def test_create_session_sets_bearer_header():

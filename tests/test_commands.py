@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
-import pytest
+
 import nhse_jira
+import pytest
 
 
 def _mock_session(json_response):
