@@ -4,6 +4,7 @@
 # dependencies = ["requests", "pyyaml"]
 # ///
 
+import argparse
 import getpass
 import os
 import re
@@ -27,8 +28,7 @@ def load_config(config_path: Path | str = DEFAULT_CONFIG_PATH) -> dict:
     if not config_path.exists():
         print(f"Error: Config file not found: {config_path}", file=sys.stderr)
         raise SystemExit(f"Config file not found: {config_path}")
-    with open(config_path) as f:
-        return yaml.safe_load(f)
+    return yaml.safe_load(config_path.read_text())
 
 
 def load_token(server_url: str, netrc_path: Path | str = DEFAULT_NETRC_PATH) -> str:
@@ -607,9 +607,6 @@ def cmd_init(config_dir: Path | str | None = None, netrc_path: Path | str | None
     print(f"Token saved to {netrc_path}")
 
 
-import argparse
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="nhse-jira", description="CLI for NHSE Jira")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -709,7 +706,7 @@ def main() -> None:
                 cmd_edit(session, base_url, issue_key, summary=args.title)
     except JiraError as e:
         print(f"Error: {e}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from e
 
 
 if __name__ == "__main__":
