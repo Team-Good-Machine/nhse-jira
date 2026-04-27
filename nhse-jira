@@ -570,7 +570,7 @@ def cmd_init(config_dir: Path | str | None = None, netrc_path: Path | str | None
 import argparse
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="nhse-jira", description="CLI for NHSE Jira")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -634,7 +634,7 @@ def build_parser():
     return parser
 
 
-def main():
+def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
