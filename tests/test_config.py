@@ -1,5 +1,5 @@
-import pytest
 import nhse_jira
+import pytest
 
 
 def test_load_config_reads_yaml(tmp_path):
