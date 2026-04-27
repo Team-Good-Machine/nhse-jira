@@ -339,12 +339,15 @@ def create_session(token: str) -> requests.Session:
 
 
 def _handle_error(resp: requests.Response) -> None:
+    msg = resp.text
     try:
         body = resp.json()
-        messages = body.get("errorMessages", [])
-        msg = "; ".join(messages) if messages else resp.text
-    except Exception:
-        msg = resp.text
+    except requests.JSONDecodeError:
+        body = None
+    if isinstance(body, dict):
+        messages = body.get("errorMessages") or []
+        if messages:
+            msg = "; ".join(str(m) for m in messages)
     raise JiraError(f"HTTP {resp.status_code}: {msg}")
 
 
