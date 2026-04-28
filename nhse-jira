@@ -428,18 +428,36 @@ def cmd_edit(
 def cmd_view(
     session: requests.Session,
     base_url: str,
-    issue_key: str,
+    issue_keys: list[str],
     custom_fields: CustomFieldsConfig | None = None,
     epic_field: str | None = None,
 ) -> None:
-    data = api_get(session, base_url, f"issue/{issue_key}")
-    epic_name = None
-    if epic_field:
-        epic_key = data["fields"].get(epic_field)
-        if epic_key:
-            epic_data = api_get(session, base_url, f"issue/{epic_key}", params={"fields": "summary"})
-            epic_name = epic_data["fields"]["summary"]
-    print(format_issue(data, custom_fields=custom_fields, epic_field=epic_field, epic_name=epic_name))
+    if len(issue_keys) == 1:
+        issue_key = issue_keys[0]
+        data = api_get(session, base_url, f"issue/{issue_key}")
+        epic_name = None
+        if epic_field:
+            epic_key = data["fields"].get(epic_field)
+            if epic_key:
+                epic_data = api_get(session, base_url, f"issue/{epic_key}", params={"fields": "summary"})
+                epic_name = epic_data["fields"]["summary"]
+        print(format_issue(data, custom_fields=custom_fields, epic_field=epic_field, epic_name=epic_name))
+        return
+
+    jql = f"key in ({', '.join(issue_keys)})"
+    data = api_get(
+        session, base_url, "search",
+        params={"jql": jql, "fields": "*all", "maxResults": len(issue_keys)},
+    )
+    by_key = {issue["key"]: issue for issue in data["issues"]}
+    blocks: list[str] = []
+    for key in issue_keys:
+        issue = by_key.get(key)
+        if issue is None:
+            print(f"Error: Could not find {key}", file=sys.stderr)
+            continue
+        blocks.append(format_issue(issue, custom_fields=custom_fields, epic_field=epic_field))
+    print("\n\n".join(blocks))
 
 
 def build_list_jql(jql: str = "", mine: bool = False, status: str | None = None) -> str:
@@ -634,9 +652,10 @@ def build_parser() -> argparse.ArgumentParser:
     view_parser = subparsers.add_parser("view", help="View issue details",
         formatter_class=FMT,
         epilog="examples:\n"
-               "  nhse-jira view MAV-5902   view by full key\n"
-               "  nhse-jira view 5902       uses default project")
-    view_parser.add_argument("issue", help="Issue key or number")
+               "  nhse-jira view MAV-5902             view by full key\n"
+               "  nhse-jira view 5902                 uses default project\n"
+               "  nhse-jira view MAV-5902 MAV-5903    view several in one request")
+    view_parser.add_argument("issues", nargs="+", help="Issue key(s) or number(s)")
 
     list_parser = subparsers.add_parser("list", help="Search issues with JQL",
         formatter_class=FMT,
@@ -704,8 +723,8 @@ def main() -> None:
     try:
         match args.command:
             case "view":
-                issue_key = normalize_key(args.issue, project)
-                cmd_view(session, base_url, issue_key, custom_fields=config.get("custom_fields"), epic_field=config.get("epic_field"))
+                issue_keys = [normalize_key(k, project) for k in args.issues]
+                cmd_view(session, base_url, issue_keys, custom_fields=config.get("custom_fields"), epic_field=config.get("epic_field"))
             case "list":
                 extra = resolve_fields(args.fields.split(",") if args.fields else None, config.get("custom_fields", {}), epic_field=config.get("epic_field"))
                 cmd_list(session, base_url, project, jql=args.jql, mine=args.mine, status=args.status, limit=args.limit, extra_fields=extra or None)

@@ -50,7 +50,8 @@ Config is saved to `~/.config/nhse-jira/config.yml` and the token to `~/.netrc`.
 
 ```
 ./nhse-jira view MAV-5902
-./nhse-jira view 5902          # uses default project
+./nhse-jira view 5902                       # uses default project
+./nhse-jira view MAV-5902 MAV-5903 5904     # several at once (one HTTP request)
 ```
 
 ### Search issues

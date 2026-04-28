@@ -28,7 +28,7 @@ class TestCmdView:
     def test_prints_formatted_issue(self, capsys):
         session = _mock_session(SAMPLE_ISSUE)
 
-        nhse_jira.cmd_view(session, "https://jira.example.com", "MAV-5902")
+        nhse_jira.cmd_view(session, "https://jira.example.com", ["MAV-5902"])
 
         output = capsys.readouterr().out
         assert "MAV-5902" in output
@@ -56,11 +56,100 @@ class TestCmdView:
         session.get.return_value.ok = True
         session.get.return_value.json.side_effect = [issue, epic]
 
-        nhse_jira.cmd_view(session, "https://jira.example.com", "MAV-100", epic_field="customfield_10005")
+        nhse_jira.cmd_view(session, "https://jira.example.com", ["MAV-100"], epic_field="customfield_10005")
 
         output = capsys.readouterr().out
         assert "MAV-50" in output
         assert "Improve national reporting" in output
+
+
+def _issue(key, summary="A summary"):
+    return {
+        "key": key,
+        "fields": {
+            "summary": summary,
+            "status": {"name": "Open"},
+            "assignee": {"displayName": "Alice"},
+            "reporter": {"displayName": "Bob"},
+            "description": "Description",
+            "comment": {"comments": []},
+        },
+    }
+
+
+class TestCmdViewMultiple:
+    def test_two_keys_prints_both(self, capsys):
+        search = {"issues": [_issue("MAV-1", "First"), _issue("MAV-2", "Second")]}
+        session = _mock_session(search)
+
+        nhse_jira.cmd_view(session, "https://jira.example.com", ["MAV-1", "MAV-2"])
+
+        output = capsys.readouterr().out
+        assert "MAV-1" in output
+        assert "First" in output
+        assert "MAV-2" in output
+        assert "Second" in output
+
+    def test_three_keys_make_one_http_request(self):
+        search = {"issues": [_issue("MAV-1"), _issue("MAV-2"), _issue("MAV-3")]}
+        session = _mock_session(search)
+
+        nhse_jira.cmd_view(session, "https://jira.example.com", ["MAV-1", "MAV-2", "MAV-3"])
+
+        assert session.get.call_count == 1
+
+    def test_single_key_still_uses_issue_endpoint(self):
+        session = _mock_session(_issue("MAV-5902"))
+
+        nhse_jira.cmd_view(session, "https://jira.example.com", ["MAV-5902"])
+
+        assert session.get.call_count == 1
+        url = session.get.call_args[0][0]
+        assert url.endswith("/rest/api/2/issue/MAV-5902")
+
+    def test_output_preserves_command_line_order(self, capsys):
+        # Jira returns reversed; CLI asked for MAV-1, MAV-2, MAV-3
+        search = {
+            "issues": [
+                _issue("MAV-3", "Third"),
+                _issue("MAV-1", "First"),
+                _issue("MAV-2", "Second"),
+            ]
+        }
+        session = _mock_session(search)
+
+        nhse_jira.cmd_view(session, "https://jira.example.com", ["MAV-1", "MAV-2", "MAV-3"])
+
+        out = capsys.readouterr().out
+        # find heading positions
+        pos_1 = out.find("MAV-1: First")
+        pos_2 = out.find("MAV-2: Second")
+        pos_3 = out.find("MAV-3: Third")
+        assert 0 <= pos_1 < pos_2 < pos_3, f"got order: {pos_1=} {pos_2=} {pos_3=}\n{out}"
+
+    def test_unknown_key_reported_valid_still_print(self, capsys):
+        # Jira finds MAV-1 but not MAV-99999
+        search = {"issues": [_issue("MAV-1", "Real ticket")]}
+        session = _mock_session(search)
+
+        nhse_jira.cmd_view(session, "https://jira.example.com", ["MAV-1", "MAV-99999"])
+
+        captured = capsys.readouterr()
+        assert "MAV-1" in captured.out
+        assert "Real ticket" in captured.out
+        assert "MAV-99999" in captured.err
+
+    def test_three_keys_use_search_endpoint_with_jql_in(self):
+        search = {"issues": [_issue("MAV-1"), _issue("MAV-2"), _issue("MAV-3")]}
+        session = _mock_session(search)
+
+        nhse_jira.cmd_view(session, "https://jira.example.com", ["MAV-1", "MAV-2", "MAV-3"])
+
+        url, kwargs = session.get.call_args[0], session.get.call_args[1]
+        assert url[0].endswith("/rest/api/2/search")
+        jql = kwargs["params"]["jql"]
+        assert "key in" in jql
+        assert "MAV-1" in jql and "MAV-2" in jql and "MAV-3" in jql
 
 
 SAMPLE_SEARCH = {
@@ -287,6 +376,39 @@ class TestCmdReleases:
         assert "7.9.0" in output
 
 
+class TestMainViewArgs:
+    def _patch_main_deps(self, monkeypatch):
+        monkeypatch.setattr(nhse_jira, "load_config", lambda: {"server": "https://jira.example.com", "project": "MAV"})
+        monkeypatch.setattr(nhse_jira, "load_token", lambda server: "fake")
+        monkeypatch.setattr(nhse_jira, "create_session", lambda token: MagicMock())
+
+    def test_numeric_multi_keys_use_default_project(self, monkeypatch):
+        self._patch_main_deps(monkeypatch)
+        monkeypatch.setattr("sys.argv", ["nhse-jira", "view", "1", "2", "3"])
+        captured = {}
+
+        def fake_view(session, base_url, issue_keys, **kwargs):
+            captured["keys"] = issue_keys
+
+        monkeypatch.setattr(nhse_jira, "cmd_view", fake_view)
+        nhse_jira.main()
+
+        assert captured["keys"] == ["MAV-1", "MAV-2", "MAV-3"]
+
+    def test_mixed_numeric_and_full_keys(self, monkeypatch):
+        self._patch_main_deps(monkeypatch)
+        monkeypatch.setattr("sys.argv", ["nhse-jira", "view", "1", "OTHER-99"])
+        captured = {}
+
+        def fake_view(session, base_url, issue_keys, **kwargs):
+            captured["keys"] = issue_keys
+
+        monkeypatch.setattr(nhse_jira, "cmd_view", fake_view)
+        nhse_jira.main()
+
+        assert captured["keys"] == ["MAV-1", "OTHER-99"]
+
+
 class TestMainJiraErrorHandling:
     def test_jira_error_prints_message_to_stderr(self, capsys, monkeypatch):
         """JiraError should produce a clean error message, not a traceback."""
@@ -378,7 +500,7 @@ class TestCmdViewCustomFields:
             },
         }
 
-        nhse_jira.cmd_view(session, "https://jira.example.com", "MAV-100", custom_fields=custom_fields)
+        nhse_jira.cmd_view(session, "https://jira.example.com", ["MAV-100"], custom_fields=custom_fields)
 
         output = capsys.readouterr().out
         assert "Clinical Severity" in output
