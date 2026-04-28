@@ -104,6 +104,18 @@ class TestParserFields:
         assert args.fields == "clinical safety"
 
 
+class TestParserView:
+    def test_view_accepts_single_key(self):
+        parser = nhse_jira.build_parser()
+        args = parser.parse_args(["view", "MAV-1"])
+        assert args.issues == ["MAV-1"]
+
+    def test_view_accepts_multiple_keys(self):
+        parser = nhse_jira.build_parser()
+        args = parser.parse_args(["view", "MAV-1", "MAV-2", "MAV-3"])
+        assert args.issues == ["MAV-1", "MAV-2", "MAV-3"]
+
+
 class TestParserHelp:
     def test_view_help_has_examples(self, capsys):
         parser = nhse_jira.build_parser()
