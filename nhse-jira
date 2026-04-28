@@ -6,10 +6,10 @@
 
 import argparse
 import getpass
+import netrc as netrc_mod
 import os
 import re
 import sys
-import netrc as netrc_mod
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -18,7 +18,6 @@ from urllib.parse import urlparse
 
 import requests
 import yaml
-
 
 DEFAULT_CONFIG_PATH = Path.home() / ".config" / "nhse-jira" / "config.yml"
 DEFAULT_NETRC_PATH = Path.home() / ".netrc"

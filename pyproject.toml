@@ -24,6 +24,7 @@ strict = true
 
 [tool.ruff]
 target-version = "py312"
+extend-include = ["nhse-jira"]  # the entry-point has no .py suffix
 
 [tool.ruff.lint]
 select = [
