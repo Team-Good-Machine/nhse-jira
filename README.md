@@ -93,6 +93,25 @@ Config is saved to `~/.config/nhse-jira/config.yml` and the token to `~/.netrc`.
 ./nhse-jira release v7.9.0 --fields "clinical safety,checklist progress"
 ```
 
+## Fields
+
+`--fields` accepts these built-in names on any project, with no configuration:
+
+| Name | Shows |
+|------|-------|
+| `assignee` | Assignee display name, or `Unassigned` |
+| `reporter` | Reporter display name |
+| `resolution` | Resolution name, or `Unresolved` |
+| `updated` | Date the issue last changed, e.g. `2026-08-21` |
+| `created` | Date the issue was raised |
+
+```
+./nhse-jira list "status = 'In build'" --fields "assignee,updated"
+```
+
+`updated` is useful for spotting stale work-in-progress — an issue sitting in an
+active status but untouched for months.
+
 ## Custom fields
 
 Custom fields are configured in `~/.config/nhse-jira/config.yml`. The MAV project

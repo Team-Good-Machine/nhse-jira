@@ -512,6 +512,58 @@ class TestFormatIssueTable:
         output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
         assert "Unresolved" in output
 
+    def test_extra_fields_date_shows_day_only(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "In build"},
+                        "updated": "2026-08-21T14:32:11.000+0100",
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Updated", "updated", "date")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "2026-08-21" in output
+        assert "14:32" not in output
+
+    def test_extra_fields_date_null(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "In build"},
+                        "updated": None,
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Updated", "updated", "date")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "None" in output
+
+    def test_extra_fields_date_unparseable_falls_back_to_raw(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-1",
+                    "fields": {
+                        "summary": "First",
+                        "status": {"name": "In build"},
+                        "updated": "not-a-date",
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Updated", "updated", "date")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "not-a-date" in output
+
     def test_extra_fields_default_unchanged(self):
         """Existing behaviour: no extra_fields still works."""
         data = {

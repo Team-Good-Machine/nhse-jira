@@ -10,7 +10,9 @@ import netrc as netrc_mod
 import os
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, NotRequired, TypedDict, cast
@@ -92,6 +94,8 @@ STANDARD_FIELDS: dict[str, FieldSpec] = {
     "assignee": ("Assignee", "assignee", "user"),
     "reporter": ("Reporter", "reporter", "user"),
     "resolution": ("Resolution", "resolution", "resolution"),
+    "updated": ("Updated", "updated", "date"),
+    "created": ("Created", "created", "date"),
 }
 
 
@@ -167,6 +171,19 @@ class Format(StrEnum):
     RESOLUTION = "resolution"
     STRING = "string"
     CHECKLIST = "checklist"
+    DATE = "date"
+
+
+def _format_date(raw: Any) -> str:
+    """Render a Jira timestamp as a plain day, e.g. 2026-08-21T14:32:11.000+0100 -> 2026-08-21.
+
+    Jira sends dates as ISO 8601 with a UTC offset. Anything unparseable is passed
+    through unchanged rather than swallowed, so odd values stay visible.
+    """
+    try:
+        return datetime.fromisoformat(str(raw)).date().isoformat()
+    except ValueError:
+        return str(raw)
 
 
 # Dispatch tables for _format_custom_value. Adding a new format type means
@@ -180,6 +197,9 @@ _NULL_DISPLAY: dict[str, str] = {
     Format.USER: "Unassigned",
     Format.RESOLUTION: "Unresolved",
 }
+_VALUE_TRANSFORM: dict[str, Callable[[Any], str]] = {
+    Format.DATE: _format_date,
+}
 
 
 def _format_custom_value(raw: Any, fmt: str) -> str:
@@ -187,6 +207,9 @@ def _format_custom_value(raw: Any, fmt: str) -> str:
         return _NULL_DISPLAY.get(fmt, "None")
     if isinstance(raw, dict) and fmt in _DICT_KEY:
         return str(raw.get(_DICT_KEY[fmt], str(raw)))
+    transform = _VALUE_TRANSFORM.get(fmt)
+    if transform:
+        return transform(raw)
     return str(raw)
 
 
