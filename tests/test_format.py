@@ -188,6 +188,43 @@ class TestFormatIssueEpic:
         assert "MAV-500" in output
 
 
+class TestFormatIssueParent:
+    def _make_issue(self, **overrides):
+        issue = {
+            "key": "MAV-7102",
+            "fields": {
+                "summary": "Add validate import job",
+                "status": {"name": "In Progress"},
+                "assignee": {"displayName": "Alice"},
+                "reporter": {"displayName": "Bob"},
+                "description": "Desc",
+                "comment": {"comments": []},
+            },
+        }
+        issue["fields"].update(overrides)
+        return issue
+
+    def test_shows_parent_key_and_summary_for_subtask(self):
+        issue = self._make_issue(parent={
+            "id": "55701",
+            "key": "MAV-5570",
+            "fields": {
+                "summary": "Refactor Import Code",
+                "status": {"name": "In Progress", "id": "3"},
+                "priority": {"name": "Medium", "id": "3"},
+                "issuetype": {"name": "Task", "subtask": False},
+            },
+        })
+        output = nhse_jira.format_issue(issue)
+        assert "Parent" in output
+        assert "MAV-5570" in output
+        assert "Refactor Import Code" in output
+
+    def test_no_parent_line_when_field_absent(self):
+        output = nhse_jira.format_issue(self._make_issue())
+        assert "Parent" not in output
+
+
 class TestFormatIssueLinks:
     def _make_issue(self, issuelinks):
         return {
@@ -279,6 +316,35 @@ class TestFormatIssueLinks:
         assert "[S]" in output
         assert "[B]" in output
         assert "[T]" in output
+
+    def test_subtask_badge_is_distinct_from_story_badge(self):
+        issue = self._make_issue([
+            {
+                "type": {"inward": "relates to", "outward": "relates to"},
+                "outwardIssue": {
+                    "key": "MAV-400",
+                    "fields": {
+                        "summary": "A story",
+                        "status": {"name": "Open"},
+                        "issuetype": {"name": "Story", "subtask": False},
+                    },
+                },
+            },
+            {
+                "type": {"inward": "relates to", "outward": "relates to"},
+                "outwardIssue": {
+                    "key": "MAV-401",
+                    "fields": {
+                        "summary": "A sub-task",
+                        "status": {"name": "Open"},
+                        "issuetype": {"name": "Sub-task", "subtask": True},
+                    },
+                },
+            },
+        ])
+        output = nhse_jira.format_issue(issue)
+        assert "[SUB] MAV-401" in output
+        assert "[S] MAV-400" in output
 
     def test_unknown_issue_type_gets_generic_badge(self):
         issue = self._make_issue([{
@@ -406,6 +472,50 @@ class TestFormatIssueTable:
             ]
         }
         extra_fields = [("Clinical Safety", "customfield_10595", "option")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "None" in output
+
+    def test_extra_fields_parent_shows_key_not_raw_dict(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-7102",
+                    "fields": {
+                        "summary": "Add validate import job",
+                        "status": {"name": "In Progress"},
+                        "parent": {
+                            "id": "55701",
+                            "key": "MAV-5570",
+                            "fields": {
+                                "summary": "Refactor Import Code",
+                                "status": {"name": "In Progress", "id": "3"},
+                                "priority": {"name": "Medium", "id": "3"},
+                                "issuetype": {"name": "Task", "subtask": False},
+                            },
+                        },
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Parent", "parent", "issue_key")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "MAV-5570" in output
+        assert "issuetype" not in output
+
+    def test_extra_fields_parent_null_for_non_subtask(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-5570",
+                    "fields": {
+                        "summary": "Refactor Import Code",
+                        "status": {"name": "In Progress"},
+                        "parent": None,
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Parent", "parent", "issue_key")]
         output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
         assert "None" in output
 

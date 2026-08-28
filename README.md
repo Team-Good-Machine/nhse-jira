@@ -104,6 +104,7 @@ Config is saved to `~/.config/nhse-jira/config.yml` and the token to `~/.netrc`.
 | `resolution` | Resolution name, or `Unresolved` |
 | `updated` | Date the issue last changed, e.g. `2026-08-21` |
 | `created` | Date the issue was raised |
+| `parent` | Key of a sub-task's parent, or `None` |
 
 ```
 ./nhse-jira list "status = 'In build'" --fields "assignee,updated"
@@ -111,6 +112,14 @@ Config is saved to `~/.config/nhse-jira/config.yml` and the token to `~/.netrc`.
 
 `updated` is useful for spotting stale work-in-progress — an issue sitting in an
 active status but untouched for months.
+
+`parent` shows which piece of larger work a sub-task belongs to. Sub-tasks hang
+off a parent rather than an epic, so filtering by `"Epic Link"` alone will not
+surface them:
+
+```
+./nhse-jira list "parent = MAV-5570" --fields "parent,assignee"
+```
 
 ## Custom fields
 
