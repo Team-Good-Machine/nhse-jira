@@ -475,6 +475,50 @@ class TestFormatIssueTable:
         output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
         assert "None" in output
 
+    def test_extra_fields_parent_shows_key_not_raw_dict(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-7102",
+                    "fields": {
+                        "summary": "Add validate import job",
+                        "status": {"name": "In Progress"},
+                        "parent": {
+                            "id": "55701",
+                            "key": "MAV-5570",
+                            "fields": {
+                                "summary": "Refactor Import Code",
+                                "status": {"name": "In Progress", "id": "3"},
+                                "priority": {"name": "Medium", "id": "3"},
+                                "issuetype": {"name": "Task", "subtask": False},
+                            },
+                        },
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Parent", "parent", "issue_key")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "MAV-5570" in output
+        assert "issuetype" not in output
+
+    def test_extra_fields_parent_null_for_non_subtask(self):
+        data = {
+            "issues": [
+                {
+                    "key": "MAV-5570",
+                    "fields": {
+                        "summary": "Refactor Import Code",
+                        "status": {"name": "In Progress"},
+                        "parent": None,
+                    },
+                },
+            ]
+        }
+        extra_fields = [("Parent", "parent", "issue_key")]
+        output = nhse_jira.format_issue_table(data, extra_fields=extra_fields)
+        assert "None" in output
+
     def test_extra_fields_assignee(self):
         data = {
             "issues": [
