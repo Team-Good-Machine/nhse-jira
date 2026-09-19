@@ -65,6 +65,26 @@ class TestFormatIssue:
         assert "User4" in output
         assert "User0" not in output
 
+    def test_shows_comment_date(self):
+        issue = self._make_issue(comment={"comments": [
+            {
+                "author": {"displayName": "Alice"},
+                "body": "Looks good",
+                "created": "2026-08-21T14:32:11.000+0100",
+            }
+        ]})
+        output = nhse_jira.format_issue(issue)
+        assert "2026-08-21" in output
+
+    def test_omits_comment_date_when_created_absent(self):
+        issue = self._make_issue(comment={"comments": [
+            {"author": {"displayName": "Alice"}, "body": "Looks good"}
+        ]})
+        output = nhse_jira.format_issue(issue)
+        assert "Alice" in output
+        assert "Looks good" in output
+        assert "()" not in output
+
     def test_shows_fix_version(self):
         output = nhse_jira.format_issue(self._make_issue(
             fixVersions=[{"name": "7.8.0"}]
