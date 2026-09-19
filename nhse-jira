@@ -300,7 +300,9 @@ def format_issue(
         for comment in last_3:
             author = comment["author"]["displayName"]
             body = comment["body"]
-            lines.append(f"  {colors.green}{author}:{colors.reset} {body}")
+            created = comment.get("created")
+            when = f" ({_format_date(created)})" if created else ""
+            lines.append(f"  {colors.green}{author}{when}:{colors.reset} {body}")
 
     if custom_fields:
         for label, cfg in custom_fields.get("sections", {}).items():

@@ -54,6 +54,14 @@ Config is saved to `~/.config/nhse-jira/config.yml` and the token to `~/.netrc`.
 ./nhse-jira view MAV-5902 MAV-5903 5904     # several at once (one HTTP request)
 ```
 
+Shows status, people, links and the description, followed by the three most
+recent comments, each dated:
+
+```
+Comments (3):
+  Alice (2026-08-21): Looks good to me
+```
+
 ### Search issues
 
 ```
